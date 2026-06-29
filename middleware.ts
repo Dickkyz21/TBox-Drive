@@ -1,15 +1,21 @@
 // middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 
 const COOKIE_NAME = 'td_session';
 const PUBLIC_PATHS = ['/login', '/api/login'];
 
-function expectedToken(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
+// Middleware berjalan di Vercel Edge Runtime, yang TIDAK mendukung modul
+// Node.js seperti `crypto` (require('crypto')). Web Crypto API (SubtleCrypto)
+// dipakai sebagai gantinya — tersedia secara global di Edge Runtime maupun
+// browser, tanpa perlu import apa pun.
+async function expectedToken(password: string): Promise<string> {
+  const data = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (
@@ -24,7 +30,8 @@ export function middleware(req: NextRequest) {
   if (!password) return NextResponse.next(); // tidak ada password diset
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
-  const valid = token && token === expectedToken(password);
+  const expected = await expectedToken(password);
+  const valid = token && token === expected;
 
   if (!valid) {
     if (pathname.startsWith('/api')) {
