@@ -63,7 +63,27 @@ export function isConfigured(): boolean {
 // ---------- FILE ----------
 
 function encodeFileCaption(meta: FileMeta): string {
-  return `📄 ${meta.n}\nTDF|${JSON.stringify(meta)}`;
+  // Format tanggal menjadi rapi (WIB)
+  const dateObj = new Date(meta.t);
+  const formattedDate = dateObj.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta'
+  });
+
+  // Konversi ukuran byte ke KB/MB agar enak dibaca
+  let sizeText = `${(meta.s / 1024).toFixed(2)} KB`;
+  if (meta.s > 1024 * 1024) {
+    sizeText = `${(meta.s / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  const rawData = `TDF|${JSON.stringify(meta)}`;
+  
+  // Mengembalikan caption berformat HTML
+  return `<b>📄 ${meta.n}</b>\n\n📦 <i>Ukuran: ${sizeText}</i>\n📅 <i>Diunggah: ${formattedDate} WIB</i>\n\n<tg-spoiler><font color="transparent">${rawData}</font></tg-spoiler>`;
 }
 
 function decodeFileCaption(caption: string | undefined): FileMeta | null {
@@ -71,7 +91,12 @@ function decodeFileCaption(caption: string | undefined): FileMeta | null {
   const marker = caption.indexOf('TDF|');
   if (marker === -1) return null;
   try {
-    return JSON.parse(caption.slice(marker + 4));
+    const jsonStringWithHtml = caption.slice(marker + 4);
+    // Cari posisi kurung kurawal tutup '}' terakhir 
+    const lastBraceIndex = jsonStringWithHtml.lastIndexOf('}');
+    const cleanJson = jsonStringWithHtml.slice(0, lastBraceIndex + 1);
+    
+    return JSON.parse(cleanJson);
   } catch {
     return null;
   }
@@ -99,6 +124,7 @@ export async function uploadFile(
   const form = new FormData();
   form.append('chat_id', CHAT_ID as string);
   form.append('caption', encodeFileCaption(meta));
+  form.append('parse_mode', 'HTML');
   form.append('document', file, filename);
 
   const res = await fetch(`${API_BASE()}/sendDocument`, {
@@ -159,7 +185,22 @@ export async function deleteMessage(messageId: number): Promise<void> {
 
 function encodeNoteText(meta: NoteMeta): string {
   const preview = meta.b.length > 200 ? `${meta.b.slice(0, 200)}…` : meta.b;
-  return `📝 ${meta.ti}\n\n${preview}\n\nTDN|${JSON.stringify(meta)}`;
+  
+  // Format tanggal menjadi rapi (WIB)
+  const dateObj = new Date(meta.c);
+  const formattedDate = dateObj.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta'
+  });
+
+  const rawData = `TDN|${JSON.stringify(meta)}`;
+  
+  // Mengembalikan teks berformat HTML
+  return `<b>📝 ${meta.ti}</b>\n\n${preview}\n\n---\n📅 <i>Dibuat: ${formattedDate} WIB</i>\n\n<tg-spoiler><font color="transparent">${rawData}</font></tg-spoiler>`;
 }
 
 function decodeNoteText(text: string | undefined): NoteMeta | null {
@@ -167,7 +208,12 @@ function decodeNoteText(text: string | undefined): NoteMeta | null {
   const marker = text.indexOf('TDN|');
   if (marker === -1) return null;
   try {
-    return JSON.parse(text.slice(marker + 4));
+    const jsonStringWithHtml = text.slice(marker + 4);
+    // Cari posisi kurung kurawal tutup '}' terakhir untuk membuang tag HTML di belakangnya
+    const lastBraceIndex = jsonStringWithHtml.lastIndexOf('}');
+    const cleanJson = jsonStringWithHtml.slice(0, lastBraceIndex + 1);
+    
+    return JSON.parse(cleanJson);
   } catch {
     return null;
   }
@@ -193,6 +239,7 @@ export async function sendNote(
     body: JSON.stringify({
       chat_id: CHAT_ID,
       text: encodeNoteText(meta),
+      parse_mode: 'HTML'
     }),
   });
 
@@ -228,6 +275,7 @@ export async function editNote(
       chat_id: CHAT_ID,
       message_id: messageId,
       text: encodeNoteText(meta),
+      parse_mode: 'HTML'
     }),
   });
 
