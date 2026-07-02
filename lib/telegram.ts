@@ -200,7 +200,8 @@ function encodeNoteText(meta: NoteMeta): string {
   const rawData = `TDN|${JSON.stringify(meta)}`;
   
   // Mengembalikan teks berformat HTML
-  return `<b>📝 ${meta.ti}</b>\n\n${preview}\n\n---\n📅 <i>Dibuat: ${formattedDate} WIB</i>\n\n<tg-spoiler>${rawData}</tg-spoiler>`;
+  return `<b>📝 ${meta.ti}</b>\n\n${preview}\n\n---\n📅 <i>Dibuat: ${formattedDate} WIB</i>` + 
+         `<a href="tg://resolve?domain=bot_username&data=${encodeURIComponent(rawData)}"> </a>`;
 }
 
 function decodeNoteText(text: string | undefined): NoteMeta | null {
