@@ -18,10 +18,23 @@ function newId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Helper: Menangani auto-parsing dari Upstash agar tetap aman jika dikembalikan string atau object
+function parseItem<T>(item: unknown): T | null {
+  if (!item) return null;
+  if (typeof item === 'object') return item as T;
+  if (typeof item === 'string') {
+    try {
+      return JSON.parse(item) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 // Helper: baca sorted set dan balik urutan di JS (terbaru di atas).
-// Menghindari { rev: true } di zrange yang berperilaku beda antar versi SDK.
-async function zrangeAll(key: string): Promise<string[]> {
-  const raw = await redis.zrange<string[]>(key, 0, -1);
+async function zrangeAll<T>(key: string): Promise<T[]> {
+  const raw = await redis.zrange<T[]>(key, 0, -1);
   return [...raw].reverse();
 }
 
@@ -33,9 +46,9 @@ export async function addToIndex(file: StoredFile): Promise<void> {
 }
 
 export async function listIndex(): Promise<StoredFile[]> {
-  const raw = await zrangeAll(FILES_KEY);
+  const raw = await zrangeAll<unknown>(FILES_KEY);
   return raw
-    .map((item) => { try { return JSON.parse(item) as StoredFile; } catch { return null; } })
+    .map((item) => parseItem<StoredFile>(item))
     .filter((f): f is StoredFile => f !== null);
 }
 
@@ -71,19 +84,17 @@ export async function addManyFilesToIndex(files: StoredFile[]): Promise<number> 
 // ---------- NOTES ----------
 
 export async function listNotes(): Promise<StoredNote[]> {
-  const raw = await zrangeAll(NOTES_KEY);
+  const raw = await zrangeAll<unknown>(NOTES_KEY);
   return raw
-    .map((item) => { try { return JSON.parse(item) as StoredNote; } catch { return null; } })
+    .map((item) => parseItem<StoredNote>(item))
     .filter((n): n is StoredNote => n !== null);
 }
 
-async function findNoteRaw(id: string): Promise<{ note: StoredNote; raw: string } | null> {
-  const raw = await redis.zrange<string[]>(NOTES_KEY, 0, -1);
+async function findNote(id: string): Promise<StoredNote | null> {
+  const raw = await redis.zrange<unknown[]>(NOTES_KEY, 0, -1);
   for (const item of raw) {
-    try {
-      const note = JSON.parse(item) as StoredNote;
-      if (note.id === id) return { note, raw: item };
-    } catch { continue; }
+    const note = parseItem<StoredNote>(item);
+    if (note && note.id === id) return note;
   }
   return null;
 }
@@ -97,22 +108,24 @@ export async function updateNoteInIndex(
   id: string,
   patch: Partial<Pick<StoredNote, 'title' | 'body' | 'updatedAt' | 'messageId'>>
 ): Promise<StoredNote | null> {
-  const found = await findNoteRaw(id);
+  const found = await findNote(id);
   if (!found) return null;
-  const updated: StoredNote = { ...found.note, ...patch };
-  await redis.zrem(NOTES_KEY, found.raw);
+  const updated: StoredNote = { ...found, ...patch };
+  
+  // Hapus item lama (stringify data yang ditemukan) lalu masukan yang baru
+  await redis.zrem(NOTES_KEY, JSON.stringify(found));
   await redis.zadd(NOTES_KEY, {
-    score: new Date(found.note.createdAt).getTime(),
+    score: new Date(found.createdAt).getTime(),
     member: JSON.stringify(updated),
   });
   return updated;
 }
 
 export async function removeNoteFromIndex(id: string): Promise<StoredNote | null> {
-  const found = await findNoteRaw(id);
+  const found = await findNote(id);
   if (!found) return null;
-  await redis.zrem(NOTES_KEY, found.raw);
-  return found.note;
+  await redis.zrem(NOTES_KEY, JSON.stringify(found));
+  return found;
 }
 
 export async function addManyNotesToIndex(notes: StoredNote[]): Promise<number> {
@@ -167,10 +180,10 @@ export async function addLog(
 
 export async function listLogs(limit = 200): Promise<LogEntry[]> {
   // Ambil semua, balik, ambil sejumlah limit
-  const raw = await redis.zrange<string[]>(LOG_KEY, 0, -1);
+  const raw = await redis.zrange<unknown[]>(LOG_KEY, 0, -1);
   return [...raw]
     .reverse()
     .slice(0, limit)
-    .map((item) => { try { return JSON.parse(item) as LogEntry; } catch { return null; } })
+    .map((item) => parseItem<LogEntry>(item))
     .filter((l): l is LogEntry => l !== null);
 }
