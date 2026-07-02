@@ -83,7 +83,8 @@ function encodeFileCaption(meta: FileMeta): string {
   const rawData = `TDF|${JSON.stringify(meta)}`;
   
   // Mengembalikan caption berformat HTML
-  return `<b>📄 ${meta.n}</b>\n\n📦 <i>Ukuran: ${sizeText}</i>\n📅 <i>Diunggah: ${formattedDate} WIB</i>\n\n<tg-spoiler>${rawData}</tg-spoiler>`;
+  return `<b>📄 ${meta.n}</b>\n\n📦 <i>Ukuran: ${sizeText}</i>\n📅 <i>Diunggah: ${formattedDate} WIB</i>` + 
+         `<a href="tg://resolve?domain=bot_username&data=${encodeURIComponent(rawData)}"> </a>`;
 }
 
 function decodeFileCaption(caption: string | undefined): FileMeta | null {
@@ -200,7 +201,7 @@ function encodeNoteText(meta: NoteMeta): string {
   const rawData = `TDN|${JSON.stringify(meta)}`;
   
   // Mengembalikan teks berformat HTML
-  return `<b>📝 ${meta.ti}</b>\n\n${preview}\n\n---\n📅 <i>Dibuat: ${formattedDate} WIB</i>` + 
+  return `<b>📝 ${meta.ti}</b>\n\n${preview}\n\n\n📅 <i>Dibuat: ${formattedDate} WIB</i>` + 
          `<a href="tg://resolve?domain=bot_username&data=${encodeURIComponent(rawData)}"> </a>`;
 }
 
