@@ -22,7 +22,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'TeleDrive Simple',
+  title: 'TeleDrive v.01',
   description: 'Penyimpanan file dan catatan pribadi yang ditenagai oleh Telegram.',
 };
 
