@@ -4,34 +4,35 @@
 // tunggal / tim kecil, bukan multi-user.
 
 import { cookies } from 'next/headers';
-import crypto from 'crypto';
+import { getAppPasswordHash } from './settings';
 
 const COOKIE_NAME = 'td_session';
 
-function expectedToken(): string | null {
-  const password = process.env.APP_PASSWORD;
-  if (!password) return null;
-  return crypto.createHash('sha256').update(password).digest('hex');
+async function expectedToken(): Promise<string | null> {
+  return getAppPasswordHash();
 }
 
-export function isAuthRequired(): boolean {
-  return Boolean(process.env.APP_PASSWORD);
+export async function isAuthRequired(): Promise<boolean> {
+  return Boolean(await expectedToken());
 }
 
-export function checkPassword(input: string): boolean {
-  const expected = process.env.APP_PASSWORD;
-  if (!expected) return true; // tidak ada password diset -> akses terbuka
-  return input === expected;
+export async function checkPassword(input: string): Promise<boolean> {
+  const expected = await expectedToken();
+  if (!expected) return true;
+  const inputHash = await import('crypto').then(({ default: crypto }) =>
+    crypto.createHash('sha256').update(input).digest('hex')
+  );
+  return inputHash === expected;
 }
 
-export function sessionCookieValue(): string {
-  return expectedToken() ?? '';
+export async function sessionCookieValue(): Promise<string> {
+  return (await expectedToken()) ?? '';
 }
 
 export async function hasValidSession(): Promise<boolean> {
-  if (!isAuthRequired()) return true;
+  if (!(await isAuthRequired())) return true;
   const token = (await cookies()).get(COOKIE_NAME)?.value;
-  return Boolean(token) && token === expectedToken();
+  return Boolean(token) && token === await expectedToken();
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;

@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST() {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return NextResponse.json(
       { error: 'Bot Telegram belum dikonfigurasi di server.' },
       { status: 500 }

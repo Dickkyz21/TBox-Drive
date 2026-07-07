@@ -4,6 +4,7 @@ import { Redis } from '@upstash/redis/cloudflare';
 
 const COOKIE_NAME = 'td_session';
 const PUBLIC_PATHS = ['/login', '/api/login'];
+const SETTINGS_KEY = 'teledrive:settings';
 
 async function expectedToken(password: string): Promise<string> {
   const data = new TextEncoder().encode(password);
@@ -29,6 +30,27 @@ async function isValidDeviceKey(apiKey: string): Promise<boolean> {
   } catch { return false; }
 }
 
+async function runtimePasswordHash(): Promise<string | null> {
+  try {
+    const url   = process.env.UPSTASH_REDIS_REST_URL   ?? process.env.KV_REST_API_URL   ?? '';
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN ?? '';
+    if (!url || !token) return null;
+    const redis = new Redis({ url, token });
+    const raw: any = await redis.get(SETTINGS_KEY);
+    const settings = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return settings?.appPasswordHash ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function effectivePasswordHash(): Promise<string | null> {
+  const runtimeHash = await runtimePasswordHash();
+  if (runtimeHash) return runtimeHash;
+  const password = process.env.APP_PASSWORD;
+  return password ? expectedToken(password) : null;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -38,15 +60,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const password = process.env.APP_PASSWORD;
-  if (!password) return NextResponse.next();
+  const expected = await effectivePasswordHash();
+  if (!expected) return NextResponse.next();
 
   // Cek X-API-Key (untuk daemon / script / device)
   if (pathname.startsWith('/api')) {
     const apiKey = req.headers.get('x-api-key');
     if (apiKey) {
       // Cocok dengan password utama ATAU key perangkat yang terdaftar
-      if (apiKey === password || await isValidDeviceKey(apiKey)) {
+      if (await expectedToken(apiKey) === expected || await isValidDeviceKey(apiKey)) {
         return NextResponse.next();
       }
       return NextResponse.json({ error: 'API key tidak valid.' }, { status: 401 });
@@ -55,7 +77,6 @@ export async function middleware(req: NextRequest) {
 
   // Cek cookie session (untuk browser)
   const token = req.cookies.get(COOKIE_NAME)?.value;
-  const expected = await expectedToken(password);
   const valid = token && token === expected;
 
   if (!valid) {

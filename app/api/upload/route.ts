@@ -21,7 +21,7 @@ function normalizeFilename(value: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return NextResponse.json(
       { error: 'Bot Telegram belum dikonfigurasi di server.' },
       { status: 500 }

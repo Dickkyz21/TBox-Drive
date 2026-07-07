@@ -10,12 +10,15 @@
 // storage fisik untuk file, bukan dibaca langsung saat render normal.
 
 import type { NoteColor } from './notes';
+import { getEffectiveSettings } from './settings';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+type TelegramConfig = {
+  botToken: string;
+  chatId: string;
+};
 
-const API_BASE = () => `https://api.telegram.org/bot${BOT_TOKEN}`;
-const FILE_BASE = () => `https://api.telegram.org/file/bot${BOT_TOKEN}`;
+const API_BASE = (botToken: string) => `https://api.telegram.org/bot${botToken}`;
+const FILE_BASE = (botToken: string) => `https://api.telegram.org/file/bot${botToken}`;
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 
 export type StoredFile = {
@@ -55,16 +58,22 @@ type NoteMeta = {
   u: string; // updatedAt
 };
 
-function assertConfigured() {
-  if (!BOT_TOKEN || !CHAT_ID) {
+async function assertConfigured(): Promise<TelegramConfig> {
+  const settings = await getEffectiveSettings();
+  if (!settings.telegram.botToken || !settings.telegram.chatId) {
     throw new Error(
-      'TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID belum diatur di environment variables.'
+      'Token bot Telegram atau Chat ID belum diatur.'
     );
   }
+  return {
+    botToken: settings.telegram.botToken,
+    chatId: settings.telegram.chatId,
+  };
 }
 
-export function isConfigured(): boolean {
-  return Boolean(BOT_TOKEN && CHAT_ID);
+export async function isConfigured(): Promise<boolean> {
+  const settings = await getEffectiveSettings();
+  return settings.telegram.configured;
 }
 
 async function readTelegramJson(res: Response, fallback: string): Promise<any> {
@@ -111,7 +120,7 @@ export async function uploadFile(
   mime: string,
   folderId?: string | null
 ): Promise<StoredFile> {
-  assertConfigured();
+  const config = await assertConfigured();
 
   const meta: FileMeta = {
     n: filename,
@@ -122,11 +131,11 @@ export async function uploadFile(
   };
 
   const form = new FormData();
-  form.append('chat_id', CHAT_ID as string);
+  form.append('chat_id', config.chatId);
   form.append('caption', encodeFileCaption(meta));
   form.append('document', file, filename);
 
-  const res = await fetch(`${API_BASE()}/sendDocument`, {
+  const res = await fetch(`${API_BASE(config.botToken)}/sendDocument`, {
     method: 'POST',
     body: form,
   });
@@ -151,23 +160,23 @@ export async function uploadFile(
  * dibutuhkan, tidak disimpan permanen di index.
  */
 export async function getDownloadUrl(fileId: string): Promise<string> {
-  assertConfigured();
+  const config = await assertConfigured();
 
-  const res = await fetch(`${API_BASE()}/getFile?file_id=${fileId}`);
+  const res = await fetch(`${API_BASE(config.botToken)}/getFile?file_id=${fileId}`);
   const data = await readTelegramJson(res, 'File tidak ditemukan di Telegram');
-  return `${FILE_BASE()}/${data.result.file_path}`;
+  return `${FILE_BASE(config.botToken)}/${data.result.file_path}`;
 }
 
 /**
  * Hapus pesan (file atau note) dari channel/grup.
  */
 export async function deleteMessage(messageId: number): Promise<void> {
-  assertConfigured();
+  const config = await assertConfigured();
 
-  const res = await fetch(`${API_BASE()}/deleteMessage`, {
+  const res = await fetch(`${API_BASE(config.botToken)}/deleteMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: CHAT_ID, message_id: messageId }),
+    body: JSON.stringify({ chat_id: config.chatId, message_id: messageId }),
   });
   await readTelegramJson(res, 'Gagal menghapus pesan di Telegram');
 }
@@ -200,7 +209,7 @@ export async function sendNote(
   body: string,
   color: NoteColor
 ): Promise<{ messageId: number; createdAt: string }> {
-  assertConfigured();
+  const config = await assertConfigured();
 
   const now = new Date().toISOString();
   const meta: NoteMeta = { id, ti: title, b: body, co: color, c: now, u: now };
@@ -210,11 +219,11 @@ export async function sendNote(
     throw new Error('Catatan terlalu panjang untuk disimpan ke Telegram.');
   }
 
-  const res = await fetch(`${API_BASE()}/sendMessage`, {
+  const res = await fetch(`${API_BASE(config.botToken)}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      chat_id: CHAT_ID,
+      chat_id: config.chatId,
       text,
     }),
   });
@@ -237,7 +246,7 @@ export async function editNote(
   color: NoteColor,
   createdAt: string
 ): Promise<{ updatedAt: string }> {
-  assertConfigured();
+  const config = await assertConfigured();
 
   const updatedAt = new Date().toISOString();
   const meta: NoteMeta = { id, ti: title, b: body, co: color, c: createdAt, u: updatedAt };
@@ -247,11 +256,11 @@ export async function editNote(
     throw new Error('Catatan terlalu panjang untuk disimpan ke Telegram.');
   }
 
-  const res = await fetch(`${API_BASE()}/editMessageText`, {
+  const res = await fetch(`${API_BASE(config.botToken)}/editMessageText`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      chat_id: CHAT_ID,
+      chat_id: config.chatId,
       message_id: messageId,
       text,
     }),
@@ -282,14 +291,14 @@ type PulledData = {
  * berulang — update yang sama tidak akan muncul dua kali.
  */
 export async function pullPendingUpdates(): Promise<PulledData> {
-  assertConfigured();
+  const config = await assertConfigured();
 
   const files: StoredFile[] = [];
   const notes: StoredNote[] = [];
   let offset: number | undefined;
 
   for (let page = 0; page < 50; page++) {
-    const url = new URL(`${API_BASE()}/getUpdates`);
+      const url = new URL(`${API_BASE(config.botToken)}/getUpdates`);
     url.searchParams.set('limit', '100');
     url.searchParams.set('timeout', '0');
     url.searchParams.set(
@@ -308,7 +317,7 @@ export async function pullPendingUpdates(): Promise<PulledData> {
       const msg = update.channel_post || update.message;
       offset = update.update_id + 1;
       if (!msg) continue;
-      if (String(msg.chat?.id) !== String(CHAT_ID)) continue;
+      if (String(msg.chat?.id) !== String(config.chatId)) continue;
 
       if (msg.document) {
         const meta = decodeFileCaption(msg.caption);
@@ -343,7 +352,7 @@ export async function pullPendingUpdates(): Promise<PulledData> {
   }
 
   if (offset !== undefined) {
-    await fetch(`${API_BASE()}/getUpdates?offset=${offset}&limit=1&timeout=0`);
+    await fetch(`${API_BASE(config.botToken)}/getUpdates?offset=${offset}&limit=1&timeout=0`);
   }
 
   return { files, notes };

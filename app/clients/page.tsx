@@ -3,10 +3,20 @@ import { listDevices, listIndex, isDeviceOnline } from '@/lib/store';
 import { ClientsManager } from '@/components/ClientsManager';
 import { SetupNotice } from '@/components/SetupNotice';
 import { headers } from 'next/headers';
+import { isConfigured } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ClientsPage() {
+  if (!(await isConfigured())) {
+    return (
+      <SetupNotice
+        title="Telegram belum dikonfigurasi"
+        message="Atur Token Bot dan Chat ID Telegram terlebih dahulu."
+      />
+    );
+  }
+
   let devices: Awaited<ReturnType<typeof listDevices>> = [];
   let files: Awaited<ReturnType<typeof listIndex>> = [];
 

@@ -12,6 +12,7 @@ const TABS = [
   { href: '/notes',    label: 'Catatan' },
   { href: '/clients',  label: 'Perangkat' },
   { href: '/history',  label: 'Riwayat' },
+  { href: '/settings', label: 'Pengaturan' },
 ];
 
 export function Header({ fileCount }: { fileCount: number }) {

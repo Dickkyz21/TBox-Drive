@@ -2,10 +2,20 @@
 import { listLogs, listIndex } from '@/lib/store';
 import { HistoryLog } from '@/components/HistoryLog';
 import { SetupNotice } from '@/components/SetupNotice';
+import { isConfigured } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HistoryPage() {
+  if (!(await isConfigured())) {
+    return (
+      <SetupNotice
+        title="Telegram belum dikonfigurasi"
+        message="Atur Token Bot dan Chat ID Telegram terlebih dahulu."
+      />
+    );
+  }
+
   let logs: Awaited<ReturnType<typeof listLogs>> = [];
   let files: Awaited<ReturnType<typeof listIndex>> = [];
 

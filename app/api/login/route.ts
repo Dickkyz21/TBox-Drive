@@ -11,12 +11,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Payload login tidak valid.' }, { status: 400 });
   }
 
-  if (!checkPassword(password)) {
+  if (!(await checkPassword(password))) {
     return NextResponse.json({ error: 'Password salah.' }, { status: 401 });
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(SESSION_COOKIE_NAME, sessionCookieValue(), {
+  res.cookies.set(SESSION_COOKIE_NAME, await sessionCookieValue(), {
     httpOnly: true,
     secure: req.nextUrl.protocol === 'https:',
     sameSite: 'lax',

@@ -17,7 +17,7 @@ export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return NextResponse.json(
       { error: 'Bot Telegram belum dikonfigurasi di server.' },
       { status: 500 }

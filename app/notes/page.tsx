@@ -7,15 +7,14 @@ import { SetupNotice } from '@/components/SetupNotice';
 export const dynamic = 'force-dynamic';
 
 export default async function NotesPage() {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return (
       <SetupNotice
         title="Belum dikonfigurasi"
         message={
           <>
-            Atur <code className="text-tg-500 font-mono">TELEGRAM_BOT_TOKEN</code>{' '}
-            dan <code className="text-tg-500 font-mono">TELEGRAM_CHAT_ID</code>{' '}
-            di Vercel, lalu deploy ulang.
+            Atur Token Bot dan Chat ID Telegram dari menu Pengaturan. Jika database belum aktif,
+            tambahkan Upstash Redis environment variables di Vercel terlebih dahulu.
           </>
         }
       />

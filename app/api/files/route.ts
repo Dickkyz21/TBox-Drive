@@ -4,7 +4,7 @@ import { listIndex } from '@/lib/store';
 import { isConfigured } from '@/lib/telegram';
 
 export async function GET() {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return NextResponse.json(
       { error: 'Bot Telegram belum dikonfigurasi di server.' },
       { status: 500 }

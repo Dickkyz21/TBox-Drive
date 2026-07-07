@@ -13,7 +13,7 @@ function newId(): string {
 }
 
 export async function GET() {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return NextResponse.json(
       { error: 'Bot Telegram belum dikonfigurasi di server.' },
       { status: 500 }
@@ -38,7 +38,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return NextResponse.json(
       { error: 'Bot Telegram belum dikonfigurasi di server.' },
       { status: 500 }
