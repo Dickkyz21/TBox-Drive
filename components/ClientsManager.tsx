@@ -472,6 +472,23 @@ export function ClientsManager({
           </div>
         </div>
 
+        <div className="rounded-xl border border-tg-500/25 bg-tg-500/10 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-ink-100">TeleDrive Desktop Client</p>
+              <p className="mt-1 text-xs text-ink-500">
+                Install di Windows/Linux, isi API key perangkat, pilih folder lokal, lalu Connect.
+              </p>
+            </div>
+            <a
+              href="/api/desktop-client"
+              className="inline-flex items-center justify-center rounded-lg border border-tg-500/40 px-4 py-2 text-sm font-medium text-tg-500 hover:bg-tg-500/10"
+            >
+              Download Client
+            </a>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-base-800/60 border border-base-700 rounded-lg px-4 py-3 text-center">
