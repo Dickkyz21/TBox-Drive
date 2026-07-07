@@ -7,8 +7,9 @@ import { formatBytes, mimeFromFilename } from '@/lib/format';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// Telegram Bot API membatasi upload via bot ke 50MB per file.
-const MAX_SIZE = 50 * 1024 * 1024;
+// Telegram Bot API membatasi upload bot ke 50MB, tetapi request body Vercel
+// biasanya ditolak jauh sebelum itu. Batas web dibuat konservatif agar error jelas.
+const MAX_SIZE = 4 * 1024 * 1024;
 const MAX_FILENAME_LENGTH = 180;
 
 function normalizeFilename(value: string): string {
@@ -48,7 +49,10 @@ export async function POST(req: NextRequest) {
 
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
-        { error: 'Ukuran file melebihi batas 50MB dari Telegram Bot API.' },
+        {
+          error:
+            'Web upload di Vercel maksimal sekitar 4MB. Untuk video besar, gunakan sync/daemon lokal atau backend non-Vercel.',
+        },
         { status: 413 }
       );
     }

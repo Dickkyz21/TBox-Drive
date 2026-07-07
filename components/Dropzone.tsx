@@ -13,7 +13,9 @@ type UploadItem = {
   error?: string;
 };
 
-const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
+// Telegram Bot API bisa menerima upload bot sampai 50MB, tetapi web upload
+// yang melewati Vercel punya batas request body lebih kecil.
+const MAX_UPLOAD_SIZE = 4 * 1024 * 1024;
 
 function uploadWithProgress(
   file: File,
@@ -41,7 +43,7 @@ function uploadWithProgress(
         }
       } catch {
         if (xhr.status === 413) {
-          reject(new Error('Ukuran file terlalu besar untuk diterima server/Vercel.'));
+          reject(new Error('Web upload di Vercel maksimal sekitar 4MB. Untuk video besar, gunakan sync/daemon.'));
         } else if (xhr.status >= 500) {
           reject(new Error('Server gagal memproses upload. Coba file lebih kecil atau cek konfigurasi deploy.'));
         } else {
@@ -84,7 +86,7 @@ export function Dropzone({
               size: file.size,
               progress: 100,
               status: 'error',
-              error: 'Ukuran file melebihi batas 50MB.',
+              error: 'Web upload di Vercel maksimal sekitar 4MB. Untuk video besar, gunakan sync/daemon.',
             },
           ]);
           return;
@@ -166,7 +168,9 @@ export function Dropzone({
           Seret file ke sini, atau{' '}
           <span className="text-tg-500">klik untuk pilih</span>
         </p>
-        <p className="text-xs text-ink-500 mt-1">Maksimal 50MB per file</p>
+        <p className="text-xs text-ink-500 mt-1">
+          Maksimal 4MB via web Vercel. File besar gunakan sync/daemon.
+        </p>
         {folderName && (
           <p className="mt-2 text-xs text-tg-500">Upload masuk ke folder {folderName}</p>
         )}
