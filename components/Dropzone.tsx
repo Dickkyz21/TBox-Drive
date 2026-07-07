@@ -13,6 +13,8 @@ type UploadItem = {
   error?: string;
 };
 
+const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
+
 function uploadWithProgress(
   file: File,
   onProgress: (pct: number) => void
@@ -61,6 +63,21 @@ export function Dropzone({
       const files = Array.from(fileList);
       files.forEach((file) => {
         const id = `${file.name}-${file.size}-${Date.now()}-${Math.random()}`;
+        if (file.size > MAX_UPLOAD_SIZE) {
+          setItems((prev) => [
+            ...prev,
+            {
+              id,
+              name: file.name,
+              size: file.size,
+              progress: 100,
+              status: 'error',
+              error: 'Ukuran file melebihi batas 50MB.',
+            },
+          ]);
+          return;
+        }
+
         setItems((prev) => [
           ...prev,
           { id, name: file.name, size: file.size, progress: 0, status: 'uploading' },

@@ -1,6 +1,6 @@
 // middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
+import { Redis } from '@upstash/redis/cloudflare';
 
 const COOKIE_NAME = 'td_session';
 const PUBLIC_PATHS = ['/login', '/api/login'];

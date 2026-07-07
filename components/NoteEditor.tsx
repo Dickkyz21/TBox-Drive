@@ -4,6 +4,9 @@
 import { useState } from 'react';
 import type { StoredNote } from '@/lib/telegram';
 
+const MAX_TITLE_LENGTH = 120;
+const MAX_BODY_LENGTH = 3000;
+
 export function NoteEditor({
   initial,
   onClose,
@@ -23,6 +26,14 @@ export function NoteEditor({
       setError('Catatan tidak boleh kosong.');
       return;
     }
+    if (title.trim().length > MAX_TITLE_LENGTH) {
+      setError(`Judul maksimal ${MAX_TITLE_LENGTH} karakter.`);
+      return;
+    }
+    if (body.trim().length > MAX_BODY_LENGTH) {
+      setError(`Isi catatan maksimal ${MAX_BODY_LENGTH} karakter.`);
+      return;
+    }
     setSaving(true);
     setError(null);
 
@@ -32,12 +43,7 @@ export function NoteEditor({
         res = await fetch(`/api/notes/${initial.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title,
-            body,
-            messageId: initial.messageId,
-            createdAt: initial.createdAt,
-          }),
+          body: JSON.stringify({ title, body }),
         });
       } else {
         res = await fetch('/api/notes', {
@@ -72,6 +78,7 @@ export function NoteEditor({
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          maxLength={MAX_TITLE_LENGTH}
           placeholder="Judul"
           className="w-full bg-base-900 border border-base-700 rounded-lg px-3.5 py-2.5 text-sm font-medium text-ink-100 placeholder:text-ink-500/60 focus:border-tg-500 transition-colors mb-3"
         />
@@ -79,12 +86,22 @@ export function NoteEditor({
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          maxLength={MAX_BODY_LENGTH}
           placeholder="Tulis catatan di sini..."
           rows={8}
           className="w-full bg-base-900 border border-base-700 rounded-lg px-3.5 py-2.5 text-sm text-ink-100 placeholder:text-ink-500/60 focus:border-tg-500 transition-colors resize-none"
         />
 
-        {error && <p className="text-danger-400 text-sm mt-2">{error}</p>}
+        <div className="mt-2 flex items-center justify-between gap-3">
+          {error ? (
+            <p className="text-danger-400 text-sm">{error}</p>
+          ) : (
+            <span />
+          )}
+          <p className="text-xs text-ink-500 shrink-0">
+            {body.length}/{MAX_BODY_LENGTH}
+          </p>
+        </div>
 
         <div className="flex justify-end gap-2 mt-5">
           <button

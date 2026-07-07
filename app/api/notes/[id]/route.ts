@@ -1,11 +1,20 @@
 // app/api/notes/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { editNote, deleteMessage, isConfigured } from '@/lib/telegram';
-import { updateNoteInIndex, removeNoteFromIndex, addLog } from '@/lib/store';
+import {
+  updateNoteInIndex,
+  removeNoteFromIndex,
+  findNoteInIndex,
+  addLog,
+  isStoreConfigured,
+} from '@/lib/store';
+
+const MAX_TITLE_LENGTH = 120;
+const MAX_BODY_LENGTH = 3000;
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   if (!isConfigured()) {
     return NextResponse.json(
@@ -13,21 +22,47 @@ export async function PATCH(
       { status: 500 }
     );
   }
+  if (!isStoreConfigured()) {
+    return NextResponse.json(
+      { error: 'Redis belum dikonfigurasi di server.' },
+      { status: 500 }
+    );
+  }
 
   try {
-    const { title, body, messageId, createdAt } = await req.json();
+    const { id } = await context.params;
+    const existing = await findNoteInIndex(id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Note tidak ditemukan.' }, { status: 404 });
+    }
+
+    const { title, body } = await req.json();
     const trimmedTitle = (title ?? '').trim() || 'Tanpa judul';
     const trimmedBody = (body ?? '').trim();
 
+    if (trimmedTitle.length > MAX_TITLE_LENGTH) {
+      return NextResponse.json(
+        { error: `Judul maksimal ${MAX_TITLE_LENGTH} karakter.` },
+        { status: 400 }
+      );
+    }
+
+    if (trimmedBody.length > MAX_BODY_LENGTH) {
+      return NextResponse.json(
+        { error: `Isi catatan maksimal ${MAX_BODY_LENGTH} karakter.` },
+        { status: 400 }
+      );
+    }
+
     const { updatedAt } = await editNote(
-      messageId,
-      params.id,
+      existing.messageId,
+      id,
       trimmedTitle,
       trimmedBody,
-      createdAt
+      existing.createdAt
     );
 
-    const updated = await updateNoteInIndex(params.id, {
+    const updated = await updateNoteInIndex(id, {
       title: trimmedTitle,
       body: trimmedBody,
       updatedAt,
@@ -50,18 +85,33 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const removed = await removeNoteFromIndex(params.id);
-
-  if (removed) {
-    try {
-      await deleteMessage(removed.messageId);
-    } catch (err: any) {
-      console.error('Gagal menghapus pesan note di Telegram:', err.message);
-    }
-    await addLog('delete_note', removed.title);
+  if (!isStoreConfigured()) {
+    return NextResponse.json(
+      { error: 'Redis belum dikonfigurasi di server.' },
+      { status: 500 }
+    );
   }
 
-  return NextResponse.json({ ok: true });
+  try {
+    const { id } = await context.params;
+    const removed = await removeNoteFromIndex(id);
+
+    if (removed) {
+      try {
+        await deleteMessage(removed.messageId);
+      } catch (err: any) {
+        console.error('Gagal menghapus pesan note di Telegram:', err.message);
+      }
+      await addLog('delete_note', removed.title);
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || 'Gagal menghapus note.' },
+      { status: 500 }
+    );
+  }
 }

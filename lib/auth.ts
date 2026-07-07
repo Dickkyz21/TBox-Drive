@@ -28,9 +28,9 @@ export function sessionCookieValue(): string {
   return expectedToken() ?? '';
 }
 
-export function hasValidSession(): boolean {
+export async function hasValidSession(): Promise<boolean> {
   if (!isAuthRequired()) return true;
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const token = (await cookies()).get(COOKIE_NAME)?.value;
   return Boolean(token) && token === expectedToken();
 }
 

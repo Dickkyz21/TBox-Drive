@@ -1,7 +1,12 @@
 // app/api/sync/route.ts
 import { NextResponse } from 'next/server';
 import { pullPendingUpdates, isConfigured } from '@/lib/telegram';
-import { addManyFilesToIndex, addManyNotesToIndex, addLog } from '@/lib/store';
+import {
+  addManyFilesToIndex,
+  addManyNotesToIndex,
+  addLog,
+  isStoreConfigured,
+} from '@/lib/store';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -10,6 +15,12 @@ export async function POST() {
   if (!isConfigured()) {
     return NextResponse.json(
       { error: 'Bot Telegram belum dikonfigurasi di server.' },
+      { status: 500 }
+    );
+  }
+  if (!isStoreConfigured()) {
+    return NextResponse.json(
+      { error: 'Redis belum dikonfigurasi di server.' },
       { status: 500 }
     );
   }

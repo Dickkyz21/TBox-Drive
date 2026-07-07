@@ -4,11 +4,12 @@ import { removeDevice, addLog } from '@/lib/store';
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    await removeDevice(params.id);
-    await addLog('sync', `Perangkat dihapus: ${params.id}`);
+    const { id } = await context.params;
+    await removeDevice(id);
+    await addLog('sync', `Perangkat dihapus: ${id}`);
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

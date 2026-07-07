@@ -5,21 +5,33 @@ import { removeFromIndex, addLog, findInIndex } from '@/lib/store';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const messageId = Number(params.id);
-  const entry = await findInIndex(messageId);
-
-  try {
-    await deleteMessage(messageId);
-  } catch (err: any) {
-    // Tetap lanjut hapus dari index walau pesan Telegram sudah terlanjur
-    // hilang (misalnya dihapus manual dari channel) supaya UI tidak nyangkut.
-    console.error('Gagal menghapus pesan Telegram:', err.message);
+  const { id } = await context.params;
+  const messageId = Number(id);
+  if (!Number.isSafeInteger(messageId)) {
+    return NextResponse.json({ error: 'ID file tidak valid.' }, { status: 400 });
   }
 
-  await removeFromIndex(messageId);
-  if (entry) await addLog('delete_file', entry.name);
+  try {
+    const entry = await findInIndex(messageId);
 
-  return NextResponse.json({ ok: true });
+    try {
+      await deleteMessage(messageId);
+    } catch (err: any) {
+      // Tetap lanjut hapus dari index walau pesan Telegram sudah terlanjur
+      // hilang (misalnya dihapus manual dari channel) supaya UI tidak nyangkut.
+      console.error('Gagal menghapus pesan Telegram:', err.message);
+    }
+
+    await removeFromIndex(messageId);
+    if (entry) await addLog('delete_file', entry.name);
+
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || 'Gagal menghapus file.' },
+      { status: 500 }
+    );
+  }
 }

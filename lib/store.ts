@@ -8,7 +8,20 @@ const redisUrl =
 const redisToken =
   process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN ?? '';
 
-const redis = new Redis({ url: redisUrl, token: redisToken });
+const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
+
+export function isStoreConfigured(): boolean {
+  return Boolean(redis);
+}
+
+function getRedis(): Redis {
+  if (!redis) {
+    throw new Error(
+      'Redis belum dikonfigurasi. Atur UPSTASH_REDIS_REST_URL dan UPSTASH_REDIS_REST_TOKEN.'
+    );
+  }
+  return redis;
+}
 
 const FILES_KEY = 'teledrive:files';
 const NOTES_KEY = 'teledrive:notes';
@@ -36,7 +49,7 @@ function safeItem<T>(item: unknown): T | null {
 
 // Baca sorted set, balik urutan di JS (terbaru di atas)
 async function zrangeAll(key: string): Promise<unknown[]> {
-  const raw = await redis.zrange(key, 0, -1);
+  const raw = await getRedis().zrange(key, 0, -1);
   return [...(raw as unknown[])].reverse();
 }
 
@@ -44,7 +57,7 @@ async function zrangeAll(key: string): Promise<unknown[]> {
 
 export async function addToIndex(file: StoredFile): Promise<void> {
   const score = new Date(file.uploadedAt).getTime();
-  await redis.zadd(FILES_KEY, { score, member: JSON.stringify(file) });
+  await getRedis().zadd(FILES_KEY, { score, member: JSON.stringify(file) });
 }
 
 export async function listIndex(): Promise<StoredFile[]> {
@@ -58,7 +71,7 @@ export async function removeFromIndex(messageId: number): Promise<void> {
   const all = await listIndex();
   const target = all.find((f) => f.messageId === messageId);
   if (!target) return;
-  await redis.zrem(FILES_KEY, JSON.stringify(target));
+  await getRedis().zrem(FILES_KEY, JSON.stringify(target));
 }
 
 export async function findInIndex(messageId: number): Promise<StoredFile | null> {
@@ -72,9 +85,10 @@ export async function addManyFilesToIndex(files: StoredFile[]): Promise<number> 
   const existingIds = new Set(existing.map((f) => f.messageId));
   const newOnes = files.filter((f) => !existingIds.has(f.messageId));
   if (newOnes.length === 0) return 0;
+  const client = getRedis();
   await Promise.all(
     newOnes.map((file) =>
-      redis.zadd(FILES_KEY, {
+      client.zadd(FILES_KEY, {
         score: new Date(file.uploadedAt).getTime(),
         member: JSON.stringify(file),
       })
@@ -95,7 +109,7 @@ export async function listNotes(): Promise<StoredNote[]> {
 async function findNoteRaw(
   id: string
 ): Promise<{ note: StoredNote; raw: string } | null> {
-  const items = await redis.zrange(NOTES_KEY, 0, -1);
+  const items = await getRedis().zrange(NOTES_KEY, 0, -1);
   for (const item of items as unknown[]) {
     const note = safeItem<StoredNote>(item);
     if (note && note.id === id) {
@@ -110,7 +124,12 @@ async function findNoteRaw(
 
 export async function addNoteToIndex(note: StoredNote): Promise<void> {
   const score = new Date(note.createdAt).getTime();
-  await redis.zadd(NOTES_KEY, { score, member: JSON.stringify(note) });
+  await getRedis().zadd(NOTES_KEY, { score, member: JSON.stringify(note) });
+}
+
+export async function findNoteInIndex(id: string): Promise<StoredNote | null> {
+  const found = await findNoteRaw(id);
+  return found?.note ?? null;
 }
 
 export async function updateNoteInIndex(
@@ -120,8 +139,9 @@ export async function updateNoteInIndex(
   const found = await findNoteRaw(id);
   if (!found) return null;
   const updated: StoredNote = { ...found.note, ...patch };
-  await redis.zrem(NOTES_KEY, found.raw);
-  await redis.zadd(NOTES_KEY, {
+  const client = getRedis();
+  await client.zrem(NOTES_KEY, found.raw);
+  await client.zadd(NOTES_KEY, {
     score: new Date(found.note.createdAt).getTime(),
     member: JSON.stringify(updated),
   });
@@ -131,7 +151,7 @@ export async function updateNoteInIndex(
 export async function removeNoteFromIndex(id: string): Promise<StoredNote | null> {
   const found = await findNoteRaw(id);
   if (!found) return null;
-  await redis.zrem(NOTES_KEY, found.raw);
+  await getRedis().zrem(NOTES_KEY, found.raw);
   return found.note;
 }
 
@@ -141,9 +161,10 @@ export async function addManyNotesToIndex(notes: StoredNote[]): Promise<number> 
   const existingIds = new Set(existing.map((n) => n.id));
   const newOnes = notes.filter((n) => !existingIds.has(n.id));
   if (newOnes.length === 0) return 0;
+  const client = getRedis();
   await Promise.all(
     newOnes.map((note) =>
-      redis.zadd(NOTES_KEY, {
+      client.zadd(NOTES_KEY, {
         score: new Date(note.createdAt).getTime(),
         member: JSON.stringify(note),
       })
@@ -184,15 +205,16 @@ export async function addLog(
     detail,
     at: new Date().toISOString(),
   };
-  await redis.zadd(LOG_KEY, { score: Date.now(), member: JSON.stringify(entry) });
-  const count = await redis.zcard(LOG_KEY);
+  const client = getRedis();
+  await client.zadd(LOG_KEY, { score: Date.now(), member: JSON.stringify(entry) });
+  const count = await client.zcard(LOG_KEY);
   if (count > LOG_MAX_ENTRIES) {
-    await redis.zremrangebyrank(LOG_KEY, 0, count - LOG_MAX_ENTRIES - 1);
+    await client.zremrangebyrank(LOG_KEY, 0, count - LOG_MAX_ENTRIES - 1);
   }
 }
 
 export async function listLogs(limit = 200): Promise<LogEntry[]> {
-  const raw = (await redis.zrange(LOG_KEY, 0, -1)) as unknown[];
+  const raw = (await getRedis().zrange(LOG_KEY, 0, -1)) as unknown[];
   return [...raw]
     .reverse()
     .slice(0, limit)
@@ -223,7 +245,7 @@ function randomApiKey(): string {
 }
 
 export async function listDevices(): Promise<Device[]> {
-  const raw = await redis.hgetall(DEVICES_KEY);
+  const raw = await getRedis().hgetall(DEVICES_KEY);
   if (!raw) return [];
   return Object.values(raw)
     .map((v) => safeItem<Device>(v))
@@ -240,21 +262,21 @@ export async function addDevice(name: string, folderPath: string): Promise<Devic
     createdAt: new Date().toISOString(),
     lastSeen: null,
   };
-  await redis.hset(DEVICES_KEY, { [device.id]: JSON.stringify(device) });
+  await getRedis().hset(DEVICES_KEY, { [device.id]: JSON.stringify(device) });
   return device;
 }
 
 export async function removeDevice(id: string): Promise<void> {
-  await redis.hdel(DEVICES_KEY, id);
+  await getRedis().hdel(DEVICES_KEY, id);
 }
 
 export async function updateDeviceHeartbeat(id: string): Promise<boolean> {
-  const raw = await redis.hget(DEVICES_KEY, id);
+  const raw = await getRedis().hget(DEVICES_KEY, id);
   if (!raw) return false;
   const device = safeItem<Device>(raw);
   if (!device) return false;
   device.lastSeen = new Date().toISOString();
-  await redis.hset(DEVICES_KEY, { [id]: JSON.stringify(device) });
+  await getRedis().hset(DEVICES_KEY, { [id]: JSON.stringify(device) });
   return true;
 }
 

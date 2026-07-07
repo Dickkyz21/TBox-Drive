@@ -41,7 +41,7 @@ export function FileCard({
           <FileIcon category={category} className="w-5 h-5" />
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
           <a
             href={`/api/file/${file.messageId}/download`}
             className="p-1.5 rounded-md text-ink-500 hover:text-tg-500 hover:bg-base-700 transition-colors"
@@ -53,6 +53,7 @@ export function FileCard({
           </a>
           <button
             onClick={() => setConfirmOpen(true)}
+            disabled={deleting}
             className="p-1.5 rounded-md text-ink-500 hover:text-danger-400 hover:bg-base-700 transition-colors"
             title="Hapus"
           >

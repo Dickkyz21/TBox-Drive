@@ -3,18 +3,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDownloadUrl } from '@/lib/telegram';
 import { findInIndex } from '@/lib/store';
 
+function contentDisposition(filename: string): string {
+  const ascii = filename
+    .replace(/[^\x20-\x7E]/g, '_')
+    .replace(/["\\]/g, '_')
+    .trim() || 'download';
+
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const messageId = Number(params.id);
-  const entry = await findInIndex(messageId);
-
-  if (!entry) {
-    return NextResponse.json({ error: 'File tidak ditemukan.' }, { status: 404 });
+  const { id } = await context.params;
+  const messageId = Number(id);
+  if (!Number.isSafeInteger(messageId)) {
+    return NextResponse.json({ error: 'ID file tidak valid.' }, { status: 400 });
   }
 
   try {
+    const entry = await findInIndex(messageId);
+
+    if (!entry) {
+      return NextResponse.json({ error: 'File tidak ditemukan.' }, { status: 404 });
+    }
+
     const url = await getDownloadUrl(entry.fileId);
     const upstream = await fetch(url);
     if (!upstream.ok || !upstream.body) {
@@ -27,9 +41,7 @@ export async function GET(
     return new NextResponse(upstream.body, {
       headers: {
         'Content-Type': entry.mime || 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(
-          entry.name
-        )}"`,
+        'Content-Disposition': contentDisposition(entry.name),
       },
     });
   } catch (err: any) {

@@ -14,6 +14,7 @@ const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 const API_BASE = () => `https://api.telegram.org/bot${BOT_TOKEN}`;
 const FILE_BASE = () => `https://api.telegram.org/file/bot${BOT_TOKEN}`;
+const TELEGRAM_MESSAGE_LIMIT = 4096;
 
 export type StoredFile = {
   messageId: number;
@@ -58,6 +59,22 @@ function assertConfigured() {
 
 export function isConfigured(): boolean {
   return Boolean(BOT_TOKEN && CHAT_ID);
+}
+
+async function readTelegramJson(res: Response, fallback: string): Promise<any> {
+  const text = await res.text();
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error(fallback);
+  }
+
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.description || fallback);
+  }
+
+  return data;
 }
 
 // ---------- FILE ----------
@@ -106,10 +123,7 @@ export async function uploadFile(
     body: form,
   });
 
-  const data = await res.json();
-  if (!data.ok) {
-    throw new Error(data.description || 'Gagal mengunggah file ke Telegram');
-  }
+  const data = await readTelegramJson(res, 'Gagal mengunggah file ke Telegram');
 
   const doc = data.result.document;
   return {
@@ -131,10 +145,7 @@ export async function getDownloadUrl(fileId: string): Promise<string> {
   assertConfigured();
 
   const res = await fetch(`${API_BASE()}/getFile?file_id=${fileId}`);
-  const data = await res.json();
-  if (!data.ok) {
-    throw new Error(data.description || 'File tidak ditemukan di Telegram');
-  }
+  const data = await readTelegramJson(res, 'File tidak ditemukan di Telegram');
   return `${FILE_BASE()}/${data.result.file_path}`;
 }
 
@@ -149,17 +160,14 @@ export async function deleteMessage(messageId: number): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: CHAT_ID, message_id: messageId }),
   });
-  const data = await res.json();
-  if (!data.ok) {
-    throw new Error(data.description || 'Gagal menghapus pesan di Telegram');
-  }
+  await readTelegramJson(res, 'Gagal menghapus pesan di Telegram');
 }
 
 // ---------- NOTE ----------
 
 function encodeNoteText(meta: NoteMeta): string {
-  const preview = meta.b.length > 200 ? `${meta.b.slice(0, 200)}…` : meta.b;
-  return `📝 ${meta.ti}\n\n${preview}\n\nTDN|${JSON.stringify(meta)}`;
+  const preview = meta.b.length > 200 ? `${meta.b.slice(0, 200)}...` : meta.b;
+  return `Note: ${meta.ti}\n\n${preview}\n\nTDN|${JSON.stringify(meta)}`;
 }
 
 function decodeNoteText(text: string | undefined): NoteMeta | null {
@@ -186,20 +194,22 @@ export async function sendNote(
 
   const now = new Date().toISOString();
   const meta: NoteMeta = { id, ti: title, b: body, c: now, u: now };
+  const text = encodeNoteText(meta);
+
+  if (text.length > TELEGRAM_MESSAGE_LIMIT) {
+    throw new Error('Catatan terlalu panjang untuk disimpan ke Telegram.');
+  }
 
   const res = await fetch(`${API_BASE()}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: CHAT_ID,
-      text: encodeNoteText(meta),
+      text,
     }),
   });
 
-  const data = await res.json();
-  if (!data.ok) {
-    throw new Error(data.description || 'Gagal mengirim note ke Telegram');
-  }
+  const data = await readTelegramJson(res, 'Gagal mengirim note ke Telegram');
 
   return { messageId: data.result.message_id, createdAt: now };
 }
@@ -220,6 +230,11 @@ export async function editNote(
 
   const updatedAt = new Date().toISOString();
   const meta: NoteMeta = { id, ti: title, b: body, c: createdAt, u: updatedAt };
+  const text = encodeNoteText(meta);
+
+  if (text.length > TELEGRAM_MESSAGE_LIMIT) {
+    throw new Error('Catatan terlalu panjang untuk disimpan ke Telegram.');
+  }
 
   const res = await fetch(`${API_BASE()}/editMessageText`, {
     method: 'POST',
@@ -227,14 +242,11 @@ export async function editNote(
     body: JSON.stringify({
       chat_id: CHAT_ID,
       message_id: messageId,
-      text: encodeNoteText(meta),
+      text,
     }),
   });
 
-  const data = await res.json();
-  if (!data.ok) {
-    throw new Error(data.description || 'Gagal mengedit note di Telegram');
-  }
+  await readTelegramJson(res, 'Gagal mengedit note di Telegram');
 
   return { updatedAt };
 }
@@ -276,10 +288,7 @@ export async function pullPendingUpdates(): Promise<PulledData> {
     if (offset !== undefined) url.searchParams.set('offset', String(offset));
 
     const res = await fetch(url.toString());
-    const data = await res.json();
-    if (!data.ok) {
-      throw new Error(data.description || 'Gagal mengambil update dari Telegram');
-    }
+    const data = await readTelegramJson(res, 'Gagal mengambil update dari Telegram');
 
     const updates = data.result as any[];
     if (updates.length === 0) break;

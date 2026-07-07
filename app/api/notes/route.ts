@@ -1,8 +1,11 @@
 // app/api/notes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { sendNote, isConfigured } from '@/lib/telegram';
-import { addNoteToIndex, listNotes, addLog } from '@/lib/store';
+import { addNoteToIndex, listNotes, addLog, isStoreConfigured } from '@/lib/store';
 import type { StoredNote } from '@/lib/telegram';
+
+const MAX_TITLE_LENGTH = 120;
+const MAX_BODY_LENGTH = 3000;
 
 function newId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -12,6 +15,12 @@ export async function GET() {
   if (!isConfigured()) {
     return NextResponse.json(
       { error: 'Bot Telegram belum dikonfigurasi di server.' },
+      { status: 500 }
+    );
+  }
+  if (!isStoreConfigured()) {
+    return NextResponse.json(
+      { error: 'Redis belum dikonfigurasi di server.' },
       { status: 500 }
     );
   }
@@ -34,11 +43,31 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+  if (!isStoreConfigured()) {
+    return NextResponse.json(
+      { error: 'Redis belum dikonfigurasi di server.' },
+      { status: 500 }
+    );
+  }
 
   try {
     const { title, body } = await req.json();
     const trimmedTitle = (title ?? '').trim();
     const trimmedBody = (body ?? '').trim();
+
+    if (trimmedTitle.length > MAX_TITLE_LENGTH) {
+      return NextResponse.json(
+        { error: `Judul maksimal ${MAX_TITLE_LENGTH} karakter.` },
+        { status: 400 }
+      );
+    }
+
+    if (trimmedBody.length > MAX_BODY_LENGTH) {
+      return NextResponse.json(
+        { error: `Isi catatan maksimal ${MAX_BODY_LENGTH} karakter.` },
+        { status: 400 }
+      );
+    }
 
     if (!trimmedTitle && !trimmedBody) {
       return NextResponse.json(
