@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDownloadUrl } from '@/lib/telegram';
 import { findInIndex } from '@/lib/store';
-import { categoryOf, extOf } from '@/lib/format';
+import { categoryOf, extOf, isTextPreviewExt } from '@/lib/format';
 
 function previewContentType(filename: string, mime: string): string {
-  if (mime) return mime;
   const ext = extOf(filename);
   if (ext === 'pdf') return 'application/pdf';
   if (ext === 'webm') return 'video/webm';
   if (ext === 'ogv') return 'video/ogg';
   if (categoryOf(filename) === 'video') return 'video/mp4';
-  if (ext === 'txt' || ext === 'md' || ext === 'csv') return 'text/plain; charset=utf-8';
-  if (ext === 'json') return 'application/json; charset=utf-8';
+  if (isTextPreviewExt(filename)) return 'text/plain; charset=utf-8';
+  if (mime.startsWith('text/')) return 'text/plain; charset=utf-8';
+  if (mime) return mime;
   return 'application/octet-stream';
 }
 

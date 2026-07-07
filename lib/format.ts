@@ -60,6 +60,47 @@ const AUDIO_EXT = ['mp3', 'wav', 'ogg', 'flac', 'm4a'];
 const ARCHIVE_EXT = ['zip', 'rar', '7z', 'tar', 'gz'];
 const DOC_EXT = ['pdf', 'doc', 'docx', 'txt', 'md'];
 const SHEET_EXT = ['xls', 'xlsx', 'csv'];
+const TEXT_PREVIEW_EXT = [
+  'txt',
+  'md',
+  'markdown',
+  'csv',
+  'json',
+  'jsonl',
+  'html',
+  'htm',
+  'php',
+  'js',
+  'jsx',
+  'ts',
+  'tsx',
+  'css',
+  'scss',
+  'sass',
+  'less',
+  'xml',
+  'svg',
+  'yml',
+  'yaml',
+  'toml',
+  'ini',
+  'env',
+  'log',
+  'sql',
+  'py',
+  'java',
+  'c',
+  'cpp',
+  'cs',
+  'go',
+  'rs',
+  'rb',
+  'sh',
+  'bat',
+  'ps1',
+  'vue',
+  'svelte',
+];
 
 export type FileCategory =
   | 'image'
@@ -79,6 +120,10 @@ export function categoryOf(name: string): FileCategory {
   if (SHEET_EXT.includes(ext)) return 'sheet';
   if (DOC_EXT.includes(ext)) return 'document';
   return 'other';
+}
+
+export function isTextPreviewExt(name: string): boolean {
+  return TEXT_PREVIEW_EXT.includes(extOf(name));
 }
 
 export const CATEGORY_ACCENT: Record<FileCategory, string> = {

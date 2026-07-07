@@ -12,6 +12,7 @@ import {
   extOf,
   formatBytes,
   formatDate,
+  isTextPreviewExt,
 } from '@/lib/format';
 import { FileIcon } from './FileIcon';
 
@@ -28,7 +29,9 @@ function isPreviewable(file: StoredFile): boolean {
     category === 'image' ||
     category === 'video' ||
     file.mime === 'application/pdf' ||
-    ['pdf', 'txt', 'md', 'csv', 'json'].includes(ext)
+    ext === 'pdf' ||
+    isTextPreviewExt(file.name) ||
+    file.mime.startsWith('text/')
   );
 }
 
