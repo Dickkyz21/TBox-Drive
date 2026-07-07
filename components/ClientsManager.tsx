@@ -16,6 +16,11 @@ function StatusDot({ online }: { online: boolean }) {
   );
 }
 
+function maskApiKey(apiKey: string): string {
+  if (apiKey.length <= 12) return '••••••••••••';
+  return `${apiKey.slice(0, 7)}••••••••••••••••${apiKey.slice(-5)}`;
+}
+
 function DeviceCard({
   device,
   onDeleted,
@@ -64,83 +69,125 @@ python3 daemon.py \\
   }
 
   return (
-    <div className="bg-base-800/70 border border-base-700 rounded-xl p-5 hover:border-base-600 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2.5">
-          <StatusDot online={device.online} />
-          <h3 className="font-semibold text-ink-100">{device.name}</h3>
-          <span className={`text-xs px-2 py-0.5 rounded-full border ${
-            device.online
-              ? 'text-ok-400 border-ok-400/30 bg-ok-400/10'
-              : 'text-ink-500 border-base-700 bg-base-800'
-          }`}>
-            {device.online ? 'Online' : 'Offline'}
-          </span>
-        </div>
-
-        {!confirm ? (
-          <button
-            onClick={() => setConfirm(true)}
-            className="p-1.5 text-ink-500 hover:text-danger-400 hover:bg-base-700 rounded-lg transition-colors"
-            title="Hapus perangkat"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
-              <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m1 0v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V7h10Z"
-                stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        ) : (
-          <div className="flex gap-1.5">
-            <button onClick={() => setConfirm(false)}
-              className="text-xs px-2.5 py-1 rounded-lg border border-base-700 text-ink-500 hover:bg-base-700">
-              Batal
-            </button>
-            <button onClick={handleDelete} disabled={deleting}
-              className="text-xs px-2.5 py-1 rounded-lg bg-danger-400/15 text-danger-400 hover:bg-danger-400/25 disabled:opacity-50">
-              {deleting ? 'Hapus...' : 'Hapus'}
-            </button>
+    <div className="bg-base-800/70 border border-base-700 rounded-xl overflow-hidden hover:border-base-600 transition-colors">
+      <div className="border-b border-base-700/70 px-5 py-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <StatusDot online={device.online} />
+              <h3 className="truncate font-semibold text-ink-100">{device.name}</h3>
+              <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                device.online
+                  ? 'text-ok-400 border-ok-400/30 bg-ok-400/10'
+                  : 'text-ink-500 border-base-700 bg-base-900'
+              }`}>
+                {device.online ? 'Online' : 'Offline'}
+              </span>
+            </div>
+            <p className="mt-1 text-xs font-mono text-ink-500">
+              ID {device.id.slice(0, 8)}
+            </p>
           </div>
-        )}
-      </div>
 
-      <div className="space-y-1.5 text-xs text-ink-500 font-mono mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-ink-500 font-sans">Folder</span>
-          <span className="text-ink-300">{device.folderPath}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-ink-500 font-sans">Terakhir sync</span>
-          <span className="text-ink-300">
-            {device.lastSeen ? formatRelative(device.lastSeen) : 'Belum pernah'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-ink-500 font-sans">API Key</span>
-          <span className="text-ink-300">
-            {showKey ? device.apiKey : '••••••••••••••••••••'}
-          </span>
-          <button onClick={() => setShowKey(!showKey)}
-            className="text-tg-500 hover:opacity-70">
-            {showKey ? 'Sembunyikan' : 'Tampilkan'}
-          </button>
-          {showKey && (
-            <button onClick={copyKey} className="text-tg-500 hover:opacity-70">
-              {copied ? '✅ Disalin' : 'Salin'}
+          {!confirm ? (
+            <button
+              onClick={() => setConfirm(true)}
+              className="p-2 text-ink-500 hover:text-danger-400 hover:bg-base-700 rounded-lg transition-colors"
+              title="Hapus perangkat"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
+                <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m1 0v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V7h10Z"
+                  stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
+          ) : (
+            <div className="flex shrink-0 gap-1.5">
+              <button onClick={() => setConfirm(false)}
+                className="text-xs px-2.5 py-1 rounded-lg border border-base-700 text-ink-500 hover:bg-base-700">
+                Batal
+              </button>
+              <button onClick={handleDelete} disabled={deleting}
+                className="text-xs px-2.5 py-1 rounded-lg bg-danger-400/15 text-danger-400 hover:bg-danger-400/25 disabled:opacity-50">
+                {deleting ? 'Hapus...' : 'Hapus'}
+              </button>
+            </div>
           )}
         </div>
       </div>
 
-      <button
-        onClick={downloadScript}
-        className="w-full flex items-center justify-center gap-2 text-sm font-medium border border-tg-500/40 text-tg-500 hover:bg-tg-500/10 rounded-lg py-2 transition-colors"
-      >
-        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
-          <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14"
-            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        Download Script (.sh)
-      </button>
+      <div className="p-5 space-y-4">
+        <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+          <div className="rounded-lg border border-base-700 bg-base-900/70 px-3 py-2.5">
+            <p className="mb-1 text-ink-500">Folder sinkron</p>
+            <p className="truncate font-mono text-ink-300" title={device.folderPath}>
+              {device.folderPath}
+            </p>
+          </div>
+          <div className="rounded-lg border border-base-700 bg-base-900/70 px-3 py-2.5">
+            <p className="mb-1 text-ink-500">Heartbeat</p>
+            <p className="font-mono text-ink-300">
+              {device.lastSeen ? formatRelative(device.lastSeen) : 'Belum pernah'}
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-ink-300">API Key Client</p>
+            <span className="rounded-full border border-warn-400/25 bg-warn-400/10 px-2 py-0.5 text-[11px] text-warn-400">
+              Rahasia
+            </span>
+          </div>
+          <div className="rounded-lg border border-base-700 bg-base-950 p-2">
+            <div className="flex items-center gap-2">
+              <code
+                className="min-w-0 flex-1 truncate px-2 font-mono text-xs text-ink-300"
+                title={showKey ? device.apiKey : 'API key disembunyikan'}
+              >
+                {showKey ? device.apiKey : maskApiKey(device.apiKey)}
+              </code>
+              <button
+                onClick={() => setShowKey(!showKey)}
+                className="shrink-0 rounded-md px-2.5 py-1.5 text-xs text-ink-500 hover:bg-base-800 hover:text-ink-100"
+                title={showKey ? 'Sembunyikan API key' : 'Tampilkan API key'}
+              >
+                {showKey ? 'Hide' : 'Show'}
+              </button>
+              <button
+                onClick={copyKey}
+                className="shrink-0 rounded-md bg-tg-500/10 px-2.5 py-1.5 text-xs font-medium text-tg-500 hover:bg-tg-500/20"
+                title="Salin API key"
+              >
+                {copied ? 'Disalin' : 'Copy'}
+              </button>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] leading-4 text-ink-500">
+            Key ini dipakai daemon untuk upload, heartbeat, dan sinkronisasi perangkat.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={downloadScript}
+            className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-tg-500/40 py-2.5 text-sm font-medium text-tg-500 transition-colors hover:bg-tg-500/10"
+          >
+            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
+              <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14"
+                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Download Script (.sh)
+          </button>
+          {showKey && (
+            <button
+              onClick={copyKey}
+              className="col-span-2 rounded-lg border border-base-700 py-2 text-sm font-medium text-ink-300 hover:bg-base-700/70"
+            >
+              {copied ? 'API key berhasil disalin' : 'Salin API Key'}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -174,7 +221,17 @@ function AddDeviceForm({
 
   return (
     <div className="bg-base-800/50 border border-base-700 border-dashed rounded-xl p-5">
-      <h3 className="font-semibold text-sm text-ink-100 mb-4">+ Tambah Perangkat</h3>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-sm text-ink-100">Tambah Perangkat</h3>
+          <p className="mt-1 text-xs text-ink-500">Buat API key baru untuk daemon lokal.</p>
+        </div>
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-tg-500/10 text-tg-500">
+          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </span>
+      </div>
       <div className="space-y-3">
         <div>
           <label className="text-xs text-ink-500 mb-1 block">Nama Perangkat</label>
@@ -198,7 +255,7 @@ function AddDeviceForm({
         <button
           onClick={handleAdd}
           disabled={loading}
-          className="w-full bg-gradient-to-r from-tg-500 to-tg-600 text-white text-sm font-medium rounded-lg py-2.5 hover:opacity-90 transition-opacity disabled:opacity-40"
+          className="w-full bg-tg-500 text-white text-sm font-medium rounded-lg py-2.5 hover:bg-tg-600 transition-colors disabled:opacity-40"
         >
           {loading ? 'Mendaftarkan...' : 'Daftarkan Perangkat'}
         </button>
@@ -248,16 +305,16 @@ export function ClientsManager({
         </div>
 
         {/* Stats */}
-        <div className="flex gap-3">
-          <div className="bg-base-800/60 border border-base-700 rounded-lg px-4 py-3 flex-1 text-center">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-base-800/60 border border-base-700 rounded-lg px-4 py-3 text-center">
             <p className="text-2xl font-display font-semibold text-ok-400">{online}</p>
             <p className="text-xs text-ink-500 mt-0.5">Online</p>
           </div>
-          <div className="bg-base-800/60 border border-base-700 rounded-lg px-4 py-3 flex-1 text-center">
+          <div className="bg-base-800/60 border border-base-700 rounded-lg px-4 py-3 text-center">
             <p className="text-2xl font-display font-semibold text-ink-500">{offline}</p>
             <p className="text-xs text-ink-500 mt-0.5">Offline</p>
           </div>
-          <div className="bg-base-800/60 border border-base-700 rounded-lg px-4 py-3 flex-1 text-center">
+          <div className="bg-base-800/60 border border-base-700 rounded-lg px-4 py-3 text-center">
             <p className="text-2xl font-display font-semibold text-ink-100">{devices.length}</p>
             <p className="text-xs text-ink-500 mt-0.5">Total</p>
           </div>
@@ -277,19 +334,42 @@ export function ClientsManager({
         </div>
 
         {/* Petunjuk singkat */}
-        <div className="border border-base-700/60 rounded-xl p-5 space-y-3">
-          <h3 className="font-semibold text-sm text-ink-100">Cara pakai di PC baru</h3>
-          <ol className="space-y-2 text-xs text-ink-500 list-decimal list-inside">
-            <li>Isi form di atas, klik <span className="text-ink-300">Daftarkan Perangkat</span></li>
-            <li>Klik <span className="text-ink-300">Download Script (.sh)</span> di kartu perangkat baru</li>
-            <li>Di PC tujuan, install Python dan watchdog:
-              <code className="block bg-base-900 rounded px-3 py-1.5 mt-1 font-mono text-ink-300">pip3 install requests watchdog</code>
+        <div className="border border-base-700/60 rounded-xl p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="font-semibold text-sm text-ink-100">Cara pakai di PC baru</h3>
+            <span className="rounded-full border border-base-700 px-2 py-0.5 text-[11px] text-ink-500">
+              Setup singkat
+            </span>
+          </div>
+          <ol className="space-y-3 text-xs text-ink-500">
+            <li className="flex gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">1</span>
+              <span>Isi form di atas, klik <span className="text-ink-300">Daftarkan Perangkat</span>.</span>
             </li>
-            <li>Salin <code className="text-ink-300 font-mono">daemon.py</code> dan script yang didownload ke folder yang sama</li>
-            <li>Jalankan:
-              <code className="block bg-base-900 rounded px-3 py-1.5 mt-1 font-mono text-ink-300">bash start-nama-pc.sh</code>
+            <li className="flex gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">2</span>
+              <span>Klik <span className="text-ink-300">Download Script (.sh)</span> pada kartu perangkat baru.</span>
             </li>
-            <li>Status perangkat berubah jadi <span className="text-ok-400">Online</span> dalam 30 detik</li>
+            <li className="flex gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">3</span>
+              <span className="min-w-0 flex-1">Di PC tujuan, install Python dan watchdog:
+                <code className="mt-1 block rounded bg-base-900 px-3 py-1.5 font-mono text-ink-300">pip3 install requests watchdog</code>
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">4</span>
+              <span>Salin <code className="text-ink-300 font-mono">daemon.py</code> dan script yang didownload ke folder yang sama.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">5</span>
+              <span className="min-w-0 flex-1">Jalankan:
+                <code className="mt-1 block rounded bg-base-900 px-3 py-1.5 font-mono text-ink-300">bash start-nama-pc.sh</code>
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">6</span>
+              <span>Status perangkat berubah jadi <span className="text-ok-400">Online</span> dalam 30 detik.</span>
+            </li>
           </ol>
         </div>
       </main>
