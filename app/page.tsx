@@ -1,5 +1,5 @@
 // app/page.tsx
-import { listIndex } from '@/lib/store';
+import { listFolders, listIndex } from '@/lib/store';
 import { isConfigured } from '@/lib/telegram';
 import { Drive } from '@/components/Drive';
 import { SetupNotice } from '@/components/SetupNotice';
@@ -25,10 +25,11 @@ export default async function Home() {
   }
 
   let files: Awaited<ReturnType<typeof listIndex>> = [];
+  let folders: Awaited<ReturnType<typeof listFolders>> = [];
   let loadError: string | null = null;
 
   try {
-    files = await listIndex();
+    [files, folders] = await Promise.all([listIndex(), listFolders()]);
   } catch (err: any) {
     loadError = err.message || 'Gagal memuat daftar file.';
   }
@@ -43,5 +44,5 @@ export default async function Home() {
     );
   }
 
-  return <Drive initialFiles={files} />;
+  return <Drive initialFiles={files} initialFolders={folders} />;
 }

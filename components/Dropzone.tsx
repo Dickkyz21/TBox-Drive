@@ -17,6 +17,7 @@ const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
 
 function uploadWithProgress(
   file: File,
+  folderId: string | null,
   onProgress: (pct: number) => void
 ): Promise<StoredFile> {
   return new Promise((resolve, reject) => {
@@ -24,6 +25,7 @@ function uploadWithProgress(
     const form = new FormData();
     form.append('file', file);
     form.append('filename', file.name);
+    if (folderId) form.append('folderId', folderId);
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
@@ -51,8 +53,12 @@ function uploadWithProgress(
 
 export function Dropzone({
   onUploaded,
+  folderId,
+  folderName,
 }: {
   onUploaded: (file: StoredFile) => void;
+  folderId?: string | null;
+  folderName?: string;
 }) {
   const [dragging, setDragging] = useState(false);
   const [items, setItems] = useState<UploadItem[]>([]);
@@ -83,7 +89,7 @@ export function Dropzone({
           { id, name: file.name, size: file.size, progress: 0, status: 'uploading' },
         ]);
 
-        uploadWithProgress(file, (pct) => {
+        uploadWithProgress(file, folderId ?? null, (pct) => {
           setItems((prev) =>
             prev.map((it) => (it.id === id ? { ...it, progress: pct } : it))
           );
@@ -108,7 +114,7 @@ export function Dropzone({
           });
       });
     },
-    [onUploaded]
+    [folderId, onUploaded]
   );
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
@@ -155,6 +161,9 @@ export function Dropzone({
           <span className="text-tg-500">klik untuk pilih</span>
         </p>
         <p className="text-xs text-ink-500 mt-1">Maksimal 50MB per file</p>
+        {folderName && (
+          <p className="mt-2 text-xs text-tg-500">Upload masuk ke folder {folderName}</p>
+        )}
       </div>
 
       {items.length > 0 && (

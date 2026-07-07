@@ -38,7 +38,24 @@ export function extOf(name: string): string {
 }
 
 const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
-const VIDEO_EXT = ['mp4', 'mkv', 'webm', 'mov', 'avi'];
+const VIDEO_EXT = [
+  'mp4',
+  'mkv',
+  'webm',
+  'mov',
+  'avi',
+  'm4v',
+  '3gp',
+  '3g2',
+  'wmv',
+  'flv',
+  'mpeg',
+  'mpg',
+  'ts',
+  'mts',
+  'm2ts',
+  'ogv',
+];
 const AUDIO_EXT = ['mp3', 'wav', 'ogg', 'flac', 'm4a'];
 const ARCHIVE_EXT = ['zip', 'rar', '7z', 'tar', 'gz'];
 const DOC_EXT = ['pdf', 'doc', 'docx', 'txt', 'md'];

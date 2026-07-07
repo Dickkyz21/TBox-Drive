@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { StoredFile } from '@/lib/telegram';
+import type { StoredFolder } from '@/lib/store';
 import { FileCard } from './FileCard';
 import { Pagination } from './Pagination';
 import {
@@ -16,14 +17,31 @@ import { FileIcon } from './FileIcon';
 
 type SortKey = 'newest' | 'name' | 'size' | 'type';
 type ViewMode = 'grid' | 'list';
+type ContentItem =
+  | { kind: 'folder'; folder: StoredFolder; fileCount: number }
+  | { kind: 'file'; file: StoredFile };
 
 function isPreviewable(file: StoredFile): boolean {
   const category = categoryOf(file.name);
   const ext = extOf(file.name);
   return (
     category === 'image' ||
+    category === 'video' ||
     file.mime === 'application/pdf' ||
     ['pdf', 'txt', 'md', 'csv', 'json'].includes(ext)
+  );
+}
+
+function FolderIcon({ className = 'h-7 w-7' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M3.5 7.5A2.5 2.5 0 0 1 6 5h4.2c.7 0 1.36.33 1.78.9l.82 1.1H18a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 18 19H6a2.5 2.5 0 0 1-2.5-2.5v-9Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -80,6 +98,17 @@ function FilePreviewPanel({
                 className="max-h-full max-w-full rounded-lg border border-base-700 object-contain"
               />
             </div>
+          ) : category === 'video' ? (
+            <div className="flex min-h-full items-center justify-center bg-black p-4">
+              <video
+                src={previewUrl}
+                controls
+                playsInline
+                className="max-h-[82vh] w-full rounded-lg bg-black"
+              >
+                Browser tidak mendukung preview video ini.
+              </video>
+            </div>
           ) : canEmbed ? (
             <iframe
               src={previewUrl}
@@ -124,11 +153,256 @@ function FilePreviewPanel({
   );
 }
 
+function FolderCard({
+  folder,
+  fileCount,
+  onOpen,
+  onRenamed,
+  onDeleted,
+}: {
+  folder: StoredFolder;
+  fileCount: number;
+  onOpen: (id: string) => void;
+  onRenamed: (folder: StoredFolder) => void;
+  onDeleted: (id: string, deletedFileIds: number[]) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(folder.name);
+  const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setName(folder.name);
+  }, [folder.name]);
+
+  async function handleRename() {
+    if (!name.trim()) {
+      setError('Nama folder wajib diisi.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/folders/${folder.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error || 'Gagal mengganti nama folder.');
+      return;
+    }
+    onRenamed(data.folder);
+    setEditing(false);
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    const res = await fetch(`/api/folders/${folder.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) {
+      onDeleted(folder.id, data.deletedFileIds || []);
+    } else {
+      setError(data.error || 'Gagal menghapus folder.');
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="group relative overflow-hidden rounded-xl border border-base-700 bg-base-800/70 transition-colors hover:border-base-600">
+      <button
+        type="button"
+        onClick={() => onOpen(folder.id)}
+        className="block w-full border-b border-base-700/70 bg-base-900 px-5 py-8 text-left"
+      >
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-warn-400/12 text-warn-400">
+          <FolderIcon className="h-9 w-9" />
+        </div>
+      </button>
+
+      <div className="p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <button type="button" onClick={() => onOpen(folder.id)} className="min-w-0 text-left">
+            <p className="truncate text-sm font-semibold text-ink-100" title={folder.name}>
+              {folder.name}
+            </p>
+            <p className="mt-1 text-xs font-mono text-ink-500">{fileCount} file</p>
+          </button>
+          <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+            <button
+              onClick={() => setEditing(true)}
+              className="rounded-md p-1.5 text-ink-500 transition-colors hover:bg-base-700 hover:text-tg-500"
+              title="Rename folder"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setConfirmOpen(true)}
+              className="rounded-md p-1.5 text-ink-500 transition-colors hover:bg-base-700 hover:text-danger-400"
+              title="Hapus folder"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m1 0v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V7h10Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {editing && (
+        <div className="absolute inset-0 flex flex-col justify-center gap-3 rounded-xl bg-base-900/95 p-4 backdrop-blur-sm">
+          <input
+            autoFocus
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="rounded-lg border border-base-700 bg-base-950 px-3 py-2 text-sm text-ink-100 focus:border-tg-500"
+          />
+          {error && <p className="text-xs text-danger-400">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setName(folder.name);
+                setEditing(false);
+              }}
+              className="rounded-lg border border-base-700 px-3 py-1.5 text-xs text-ink-300 hover:bg-base-800"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleRename}
+              disabled={saving}
+              className="rounded-lg bg-tg-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-tg-600 disabled:opacity-50"
+            >
+              {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmOpen && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-base-900/95 p-4 text-center backdrop-blur-sm">
+          <p className="text-xs text-ink-300">
+            Hapus folder ini beserta {fileCount} file di dalamnya?
+          </p>
+          {error && <p className="text-xs text-danger-400">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmOpen(false)}
+              className="rounded-lg border border-base-700 px-3 py-1.5 text-xs text-ink-300 hover:bg-base-800"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="rounded-lg bg-danger-400/15 px-3 py-1.5 text-xs text-danger-400 hover:bg-danger-400/25 disabled:opacity-50"
+            >
+              {deleting ? 'Menghapus...' : 'Hapus'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreateFolderModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (folder: StoredFolder) => void;
+}) {
+  const [name, setName] = useState('Folder Baru');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) return null;
+
+  async function handleCreate() {
+    setSaving(true);
+    setError(null);
+    const res = await fetch('/api/folders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error || 'Gagal membuat folder.');
+      return;
+    }
+    onCreated(data.folder);
+    setName('Folder Baru');
+    onClose();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Tutup tambah folder"
+        onClick={onClose}
+        className="fixed inset-0 z-40 bg-base-950/70 backdrop-blur-sm"
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-xl border border-base-700 bg-base-800 p-5 shadow-2xl">
+          <h3 className="text-sm font-semibold text-ink-100">Folder Baru</h3>
+          <p className="mt-1 text-xs text-ink-500">Folder dibuat di halaman File dan bisa langsung diisi upload.</p>
+          <input
+            autoFocus
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="mt-4 w-full rounded-lg border border-base-700 bg-base-900 px-3.5 py-2.5 text-sm text-ink-100 focus:border-tg-500"
+          />
+          {error && <p className="mt-2 text-xs text-danger-400">{error}</p>}
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-lg border border-base-700 px-4 py-2 text-sm text-ink-300 hover:bg-base-700/50 disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={saving}
+              className="rounded-lg bg-tg-500 px-4 py-2 text-sm font-medium text-white hover:bg-tg-600 disabled:opacity-50"
+            >
+              {saving ? 'Membuat...' : 'Buat Folder'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function FileGrid({
   files,
+  folders,
+  currentFolderId,
+  onFolderOpen,
+  onFolderAdded,
+  onFolderRenamed,
+  onFolderDeleted,
   onDeleted,
 }: {
   files: StoredFile[];
+  folders: StoredFolder[];
+  currentFolderId: string | null;
+  onFolderOpen: (id: string | null) => void;
+  onFolderAdded: (folder: StoredFolder) => void;
+  onFolderRenamed: (folder: StoredFolder) => void;
+  onFolderDeleted: (id: string, deletedFileIds: number[]) => void;
   onDeleted: (messageId: number) => void;
 }) {
   const [query, setQuery] = useState('');
@@ -137,19 +411,60 @@ export function FileGrid({
   const [preview, setPreview] = useState<StoredFile | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [createOpen, setCreateOpen] = useState(false);
+  const currentFolder = folders.find((folder) => folder.id === currentFolderId) ?? null;
+  const knownFolderIds = useMemo(
+    () => new Set(folders.map((folder) => folder.id)),
+    [folders]
+  );
+  const filesInCurrentFolder = useMemo(
+    () =>
+      files.filter((file) =>
+        currentFolderId
+          ? file.folderId === currentFolderId
+          : !file.folderId || !knownFolderIds.has(file.folderId)
+      ),
+    [currentFolderId, files, knownFolderIds]
+  );
+  const folderCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    files.forEach((file) => {
+      if (!file.folderId || !knownFolderIds.has(file.folderId)) return;
+      counts.set(file.folderId, (counts.get(file.folderId) ?? 0) + 1);
+    });
+    return counts;
+  }, [files, knownFolderIds]);
 
-  const filtered = useMemo(() => {
-    const sorted = [...files].sort((a, b) => {
+  const filtered = useMemo<ContentItem[]>(() => {
+    const sortedFiles = [...filesInCurrentFolder].sort((a, b) => {
       if (sort === 'name') return a.name.localeCompare(b.name);
       if (sort === 'size') return b.size - a.size;
       if (sort === 'type') return categoryOf(a.name).localeCompare(categoryOf(b.name));
       return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
     });
 
-    if (!query.trim()) return sorted;
+    const rootFolders: ContentItem[] = currentFolderId
+      ? []
+      : [...folders]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((folder) => ({
+            kind: 'folder',
+            folder,
+            fileCount: folderCounts.get(folder.id) ?? 0,
+          }));
+    const items: ContentItem[] = [
+      ...rootFolders,
+      ...sortedFiles.map((file) => ({ kind: 'file', file }) as ContentItem),
+    ];
+
+    if (!query.trim()) return items;
     const q = query.toLowerCase();
-    return sorted.filter((f) => f.name.toLowerCase().includes(q));
-  }, [files, query, sort]);
+    return items.filter((item) =>
+      item.kind === 'folder'
+        ? item.folder.name.toLowerCase().includes(q)
+        : item.file.name.toLowerCase().includes(q)
+    );
+  }, [currentFolderId, filesInCurrentFolder, folderCounts, folders, query, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -160,35 +475,59 @@ export function FileGrid({
 
   useEffect(() => {
     setPage(1);
-  }, [query, sort, pageSize]);
+  }, [currentFolderId, query, sort, pageSize]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
   const summary = useMemo(() => {
-    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-    const images = files.filter((file) => categoryOf(file.name) === 'image').length;
-    const documents = files.filter((file) => categoryOf(file.name) === 'document').length;
+    const totalSize = filesInCurrentFolder.reduce((sum, file) => sum + file.size, 0);
+    const images = filesInCurrentFolder.filter((file) => categoryOf(file.name) === 'image').length;
+    const documents = filesInCurrentFolder.filter((file) => categoryOf(file.name) === 'document').length;
     return { totalSize, images, documents };
-  }, [files]);
-
-  if (files.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <p className="text-ink-500 text-sm">
-          Belum ada file. Unggah file pertamamu di atas.
-        </p>
-      </div>
-    );
-  }
+  }, [filesInCurrentFolder]);
 
   return (
     <div className="space-y-5">
+      <div className="flex flex-col gap-3 rounded-xl border border-base-700 bg-base-800/45 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2 text-sm">
+          <button
+            type="button"
+            onClick={() => onFolderOpen(null)}
+            className={`rounded-lg px-3 py-2 font-medium ${
+              currentFolderId
+                ? 'text-ink-500 hover:bg-base-700 hover:text-ink-100'
+                : 'bg-base-700 text-ink-100'
+            }`}
+          >
+            Root
+          </button>
+          {currentFolder && (
+            <>
+              <span className="text-ink-500">/</span>
+              <span className="truncate rounded-lg bg-tg-500/10 px-3 py-2 font-medium text-tg-500">
+                {currentFolder.name}
+              </span>
+            </>
+          )}
+        </div>
+        {!currentFolderId && (
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-tg-500/40 px-4 py-2 text-sm font-medium text-tg-500 hover:bg-tg-500/10"
+          >
+            <FolderIcon className="h-4 w-4" />
+            Folder Baru
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-base-700 bg-base-800/50 px-4 py-3">
-          <p className="text-xs text-ink-500">Total file</p>
-          <p className="mt-1 text-xl font-semibold text-ink-100">{files.length}</p>
+          <p className="text-xs text-ink-500">{currentFolder ? 'File folder' : 'File root'}</p>
+          <p className="mt-1 text-xl font-semibold text-ink-100">{filesInCurrentFolder.length}</p>
         </div>
         <div className="rounded-lg border border-base-700 bg-base-800/50 px-4 py-3">
           <p className="text-xs text-ink-500">Ukuran</p>
@@ -199,8 +538,10 @@ export function FileGrid({
           <p className="mt-1 text-xl font-semibold text-ink-100">{summary.images}</p>
         </div>
         <div className="rounded-lg border border-base-700 bg-base-800/50 px-4 py-3">
-          <p className="text-xs text-ink-500">Dokumen</p>
-          <p className="mt-1 text-xl font-semibold text-ink-100">{summary.documents}</p>
+          <p className="text-xs text-ink-500">{currentFolder ? 'Dokumen' : 'Folder'}</p>
+          <p className="mt-1 text-xl font-semibold text-ink-100">
+            {currentFolder ? summary.documents : folders.length}
+          </p>
         </div>
       </div>
 
@@ -217,7 +558,7 @@ export function FileGrid({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari nama file..."
+            placeholder="Cari folder atau file..."
             className="w-full rounded-lg border border-base-700 bg-base-900 pl-10 pr-3.5 py-2.5 text-sm text-ink-100 placeholder:text-ink-500/60 transition-colors focus:border-tg-500"
           />
         </div>
@@ -260,22 +601,61 @@ export function FileGrid({
 
       {filtered.length === 0 ? (
         <p className="text-center text-ink-500 text-sm py-10">
-          Tidak ada file yang cocok dengan &quot;{query}&quot;.
+          {query
+            ? `Tidak ada item yang cocok dengan "${query}".`
+            : 'Belum ada item di lokasi ini.'}
         </p>
       ) : view === 'grid' ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {paginated.map((file) => (
-            <FileCard
-              key={file.messageId}
-              file={file}
-              onDeleted={onDeleted}
-              onPreview={setPreview}
-            />
-          ))}
+          {paginated.map((item) =>
+            item.kind === 'folder' ? (
+              <FolderCard
+                key={item.folder.id}
+                folder={item.folder}
+                fileCount={item.fileCount}
+                onOpen={onFolderOpen}
+                onRenamed={onFolderRenamed}
+                onDeleted={onFolderDeleted}
+              />
+            ) : (
+              <FileCard
+                key={item.file.messageId}
+                file={item.file}
+                onDeleted={onDeleted}
+                onPreview={setPreview}
+              />
+            )
+          )}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-base-700 bg-base-800/45">
-          {paginated.map((file) => {
+          {paginated.map((item) => {
+            if (item.kind === 'folder') {
+              return (
+                <button
+                  key={item.folder.id}
+                  onClick={() => onFolderOpen(item.folder.id)}
+                  className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-base-700/60 px-4 py-3 text-left last:border-b-0 hover:bg-base-800"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-warn-400/12 text-warn-400">
+                    <FolderIcon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-ink-100">
+                      {item.folder.name}
+                    </span>
+                    <span className="mt-0.5 block text-xs font-mono text-ink-500">
+                      {item.fileCount} file
+                    </span>
+                  </span>
+                  <span className="hidden text-xs font-mono text-ink-500 sm:block">
+                    Folder
+                  </span>
+                </button>
+              );
+            }
+
+            const file = item.file;
             const category = categoryOf(file.name);
             const accent = CATEGORY_ACCENT[category];
             return (
@@ -322,9 +702,14 @@ export function FileGrid({
         pageSize={pageSize}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
-        itemLabel="file"
+        itemLabel="item"
       />
 
+      <CreateFolderModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={onFolderAdded}
+      />
       <FilePreviewPanel file={preview} onClose={() => setPreview(null)} />
     </div>
   );

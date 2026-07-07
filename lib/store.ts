@@ -24,6 +24,7 @@ function getRedis(): Redis {
 }
 
 const FILES_KEY = 'teledrive:files';
+const FOLDERS_KEY = 'teledrive:folders';
 const NOTES_KEY = 'teledrive:notes';
 const LOG_KEY   = 'teledrive:log';
 
@@ -54,6 +55,13 @@ async function zrangeAll(key: string): Promise<unknown[]> {
 }
 
 // ---------- FILES ----------
+
+export type StoredFolder = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export async function addToIndex(file: StoredFile): Promise<void> {
   const score = new Date(file.uploadedAt).getTime();
@@ -95,6 +103,80 @@ export async function addManyFilesToIndex(files: StoredFile[]): Promise<number> 
     )
   );
   return newOnes.length;
+}
+
+// ---------- FOLDERS ----------
+
+function normalizeFolderName(name: string): string {
+  const cleaned = name.replace(/[\\/:*?"<>|\r\n]/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned.slice(0, 80) || 'Folder Baru';
+}
+
+async function listFoldersRaw(): Promise<{ folder: StoredFolder; raw: string }[]> {
+  const items = await getRedis().zrange(FOLDERS_KEY, 0, -1);
+  return (items as unknown[])
+    .map((item) => {
+      const folder = safeItem<StoredFolder>(item);
+      if (!folder || typeof folder.id !== 'string') return null;
+      return {
+        folder,
+        raw: typeof item === 'string' ? item : JSON.stringify(folder),
+      };
+    })
+    .filter((item): item is { folder: StoredFolder; raw: string } => item !== null);
+}
+
+export async function listFolders(): Promise<StoredFolder[]> {
+  const raw = await zrangeAll(FOLDERS_KEY);
+  return raw
+    .map((item) => safeItem<StoredFolder>(item))
+    .filter((folder): folder is StoredFolder => folder !== null && typeof folder.id === 'string');
+}
+
+export async function addFolder(name: string): Promise<StoredFolder> {
+  const folderName = normalizeFolderName(name);
+  const now = new Date().toISOString();
+  const folder: StoredFolder = {
+    id: newId(),
+    name: folderName,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await getRedis().zadd(FOLDERS_KEY, {
+    score: new Date(folder.createdAt).getTime(),
+    member: JSON.stringify(folder),
+  });
+  return folder;
+}
+
+export async function updateFolder(
+  id: string,
+  patch: Partial<Pick<StoredFolder, 'name'>>
+): Promise<StoredFolder | null> {
+  const all = await listFoldersRaw();
+  const found = all.find((item) => item.folder.id === id);
+  if (!found) return null;
+  const updated: StoredFolder = {
+    ...found.folder,
+    ...patch,
+    name: patch.name ? normalizeFolderName(patch.name) : found.folder.name,
+    updatedAt: new Date().toISOString(),
+  };
+  const client = getRedis();
+  await client.zrem(FOLDERS_KEY, found.raw);
+  await client.zadd(FOLDERS_KEY, {
+    score: new Date(found.folder.createdAt).getTime(),
+    member: JSON.stringify(updated),
+  });
+  return updated;
+}
+
+export async function removeFolder(id: string): Promise<StoredFolder | null> {
+  const all = await listFoldersRaw();
+  const found = all.find((item) => item.folder.id === id);
+  if (!found) return null;
+  await getRedis().zrem(FOLDERS_KEY, found.raw);
+  return found.folder;
 }
 
 // ---------- NOTES ----------
@@ -178,6 +260,9 @@ export async function addManyNotesToIndex(notes: StoredNote[]): Promise<number> 
 export type LogAction =
   | 'upload'
   | 'delete_file'
+  | 'create_folder'
+  | 'rename_folder'
+  | 'delete_folder'
   | 'create_note'
   | 'edit_note'
   | 'delete_note'

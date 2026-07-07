@@ -10,6 +10,9 @@ import { Pagination } from './Pagination';
 const ACTION_CONFIG: Record<LogAction, { label: string; color: string }> = {
   upload:       { label: 'Upload',        color: '#2AABEE' },
   delete_file:  { label: 'Hapus File',    color: '#F87171' },
+  create_folder:{ label: 'Buat Folder',   color: '#F59E0B' },
+  rename_folder:{ label: 'Rename Folder', color: '#F59E0B' },
+  delete_folder:{ label: 'Hapus Folder',  color: '#F87171' },
   create_note:  { label: 'Buat Catatan',  color: '#34D399' },
   edit_note:    { label: 'Edit Catatan',  color: '#F59E0B' },
   delete_note:  { label: 'Hapus Catatan', color: '#F87171' },

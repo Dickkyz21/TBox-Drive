@@ -3,12 +3,22 @@
 
 import { useState } from 'react';
 import type { StoredFile } from '@/lib/telegram';
+import type { StoredFolder } from '@/lib/store';
 import { Header } from './Header';
 import { Dropzone } from './Dropzone';
 import { FileGrid } from './FileGrid';
 
-export function Drive({ initialFiles }: { initialFiles: StoredFile[] }) {
+export function Drive({
+  initialFiles,
+  initialFolders,
+}: {
+  initialFiles: StoredFile[];
+  initialFolders: StoredFolder[];
+}) {
   const [files, setFiles] = useState<StoredFile[]>(initialFiles);
+  const [folders, setFolders] = useState<StoredFolder[]>(initialFolders);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const currentFolder = folders.find((folder) => folder.id === currentFolderId) ?? null;
 
   function handleUploaded(file: StoredFile) {
     setFiles((prev) => [file, ...prev]);
@@ -18,12 +28,33 @@ export function Drive({ initialFiles }: { initialFiles: StoredFile[] }) {
     setFiles((prev) => prev.filter((f) => f.messageId !== messageId));
   }
 
+  function handleFolderDeleted(id: string, deletedFileIds: number[]) {
+    setFolders((prev) => prev.filter((folder) => folder.id !== id));
+    setFiles((prev) => prev.filter((file) => !deletedFileIds.includes(file.messageId)));
+    if (currentFolderId === id) setCurrentFolderId(null);
+  }
+
   return (
     <div className="max-w-6xl mx-auto">
       <Header fileCount={files.length} />
       <main className="px-6 sm:px-8 py-8 space-y-8">
-        <Dropzone onUploaded={handleUploaded} />
-        <FileGrid files={files} onDeleted={handleDeleted} />
+        <Dropzone
+          onUploaded={handleUploaded}
+          folderId={currentFolderId}
+          folderName={currentFolder?.name}
+        />
+        <FileGrid
+          files={files}
+          folders={folders}
+          currentFolderId={currentFolderId}
+          onFolderOpen={setCurrentFolderId}
+          onFolderAdded={(folder) => setFolders((prev) => [folder, ...prev])}
+          onFolderRenamed={(folder) =>
+            setFolders((prev) => prev.map((item) => (item.id === folder.id ? folder : item)))
+          }
+          onFolderDeleted={handleFolderDeleted}
+          onDeleted={handleDeleted}
+        />
       </main>
     </div>
   );

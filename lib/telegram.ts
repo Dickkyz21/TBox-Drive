@@ -25,6 +25,7 @@ export type StoredFile = {
   mime: string;
   uploadedAt: string;
   fileId: string;
+  folderId?: string | null;
 };
 
 type FileMeta = {
@@ -32,6 +33,7 @@ type FileMeta = {
   s: number; // size in bytes
   m: string; // mime type
   t: string; // ISO timestamp
+  f?: string | null; // folder id
 };
 
 export type StoredNote = {
@@ -106,7 +108,8 @@ function decodeFileCaption(caption: string | undefined): FileMeta | null {
 export async function uploadFile(
   file: Blob,
   filename: string,
-  mime: string
+  mime: string,
+  folderId?: string | null
 ): Promise<StoredFile> {
   assertConfigured();
 
@@ -115,6 +118,7 @@ export async function uploadFile(
     s: file.size,
     m: mime || 'application/octet-stream',
     t: new Date().toISOString(),
+    f: folderId || null,
   };
 
   const form = new FormData();
@@ -137,6 +141,7 @@ export async function uploadFile(
     mime: meta.m,
     uploadedAt: meta.t,
     fileId: doc.file_id,
+    folderId: meta.f,
   };
 }
 
@@ -315,6 +320,7 @@ export async function pullPendingUpdates(): Promise<PulledData> {
             mime: meta.m,
             uploadedAt: meta.t,
             fileId: msg.document.file_id,
+            folderId: meta.f,
           });
         }
       } else if (msg.text) {
