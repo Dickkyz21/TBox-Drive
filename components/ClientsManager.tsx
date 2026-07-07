@@ -6,6 +6,8 @@ import type { Device } from '@/lib/store';
 import { Header } from './Header';
 import { formatRelative } from '@/lib/format';
 
+type ViewMode = 'grid' | 'list';
+
 function StatusDot({ online }: { online: boolean }) {
   return (
     <span
@@ -14,6 +16,26 @@ function StatusDot({ online }: { online: boolean }) {
       }`}
     />
   );
+}
+
+function downloadDeviceScript(device: Device, deployUrl: string) {
+  const script = `#!/bin/bash
+# TeleDrive Sync — ${device.name}
+# Dibuat otomatis dari TeleDrive web. Jangan bagikan file ini.
+cd "$(dirname "$0")"
+python3 daemon.py \\
+  --folder "${device.folderPath}" \\
+  --url "${deployUrl}" \\
+  --api-key "${device.apiKey}" \\
+  --client-id "${device.id}" \\
+  --interval 30 \\
+  --log-file ~/teledrive-${device.id.slice(0,8)}.log
+`;
+  const blob = new Blob([script], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `start-${device.name.replace(/\s+/g, '-').toLowerCase()}.sh`;
+  a.click();
 }
 
 function maskApiKey(apiKey: string): string {
@@ -43,23 +65,7 @@ function DeviceCard({
   }
 
   function downloadScript() {
-    const script = `#!/bin/bash
-# TeleDrive Sync — ${device.name}
-# Dibuat otomatis dari TeleDrive web. Jangan bagikan file ini.
-cd "$(dirname "$0")"
-python3 daemon.py \\
-  --folder "${device.folderPath}" \\
-  --url "${deployUrl}" \\
-  --api-key "${device.apiKey}" \\
-  --client-id "${device.id}" \\
-  --interval 30 \\
-  --log-file ~/teledrive-${device.id.slice(0,8)}.log
-`;
-    const blob = new Blob([script], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `start-${device.name.replace(/\s+/g, '-').toLowerCase()}.sh`;
-    a.click();
+    downloadDeviceScript(device, deployUrl);
   }
 
   function copyKey() {
@@ -192,10 +198,111 @@ python3 daemon.py \\
   );
 }
 
+function DeviceListRow({
+  device,
+  onDeleted,
+  deployUrl,
+}: {
+  device: Device & { online: boolean };
+  onDeleted: (id: string) => void;
+  deployUrl: string;
+}) {
+  const [showKey, setShowKey] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    const res = await fetch(`/api/clients/${device.id}`, { method: 'DELETE' });
+    if (res.ok) onDeleted(device.id);
+    else setDeleting(false);
+  }
+
+  function copyKey() {
+    navigator.clipboard.writeText(device.apiKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-4 border-b border-base-700/60 px-4 py-4 last:border-b-0 lg:grid-cols-[1.4fr_1.2fr_1.6fr_auto] lg:items-center">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2.5">
+          <StatusDot online={device.online} />
+          <p className="truncate text-sm font-semibold text-ink-100">{device.name}</p>
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${
+            device.online
+              ? 'text-ok-400 border-ok-400/30 bg-ok-400/10'
+              : 'text-ink-500 border-base-700 bg-base-900'
+          }`}>
+            {device.online ? 'Online' : 'Offline'}
+          </span>
+        </div>
+        <p className="mt-1 text-xs font-mono text-ink-500">ID {device.id.slice(0, 8)}</p>
+      </div>
+
+      <div className="min-w-0 text-xs">
+        <p className="text-ink-500">Folder sinkron</p>
+        <p className="mt-1 truncate font-mono text-ink-300" title={device.folderPath}>
+          {device.folderPath}
+        </p>
+      </div>
+
+      <div className="min-w-0">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <p className="text-xs text-ink-500">API Key Client</p>
+          <p className="text-xs font-mono text-ink-500">
+            {device.lastSeen ? formatRelative(device.lastSeen) : 'Belum pernah'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border border-base-700 bg-base-950 p-2">
+          <code className="min-w-0 flex-1 truncate px-1 font-mono text-xs text-ink-300">
+            {showKey ? device.apiKey : maskApiKey(device.apiKey)}
+          </code>
+          <button
+            onClick={() => setShowKey(!showKey)}
+            className="rounded-md px-2 py-1 text-xs text-ink-500 hover:bg-base-800 hover:text-ink-100"
+          >
+            {showKey ? 'Hide' : 'Show'}
+          </button>
+          <button
+            onClick={copyKey}
+            className="rounded-md bg-tg-500/10 px-2 py-1 text-xs font-medium text-tg-500 hover:bg-tg-500/20"
+          >
+            {copied ? 'Disalin' : 'Copy'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 lg:justify-end">
+        <button
+          onClick={() => downloadDeviceScript(device, deployUrl)}
+          className="inline-flex items-center gap-2 rounded-lg border border-tg-500/40 px-3 py-2 text-sm font-medium text-tg-500 hover:bg-tg-500/10"
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14"
+              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Script
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="rounded-lg border border-base-700 px-3 py-2 text-sm text-ink-500 hover:bg-base-700 hover:text-danger-400 disabled:opacity-50"
+        >
+          {deleting ? 'Hapus...' : 'Hapus'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AddDeviceForm({
   onAdded,
+  onCancel,
 }: {
   onAdded: (device: Device & { online: boolean }) => void;
+  onCancel?: () => void;
 }) {
   const [name, setName] = useState('');
   const [folder, setFolder] = useState('~/TeleDrive');
@@ -220,7 +327,7 @@ function AddDeviceForm({
   }
 
   return (
-    <div className="bg-base-800/50 border border-base-700 border-dashed rounded-xl p-5">
+    <div>
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-sm text-ink-100">Tambah Perangkat</h3>
@@ -259,8 +366,50 @@ function AddDeviceForm({
         >
           {loading ? 'Mendaftarkan...' : 'Daftarkan Perangkat'}
         </button>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="w-full rounded-lg border border-base-700 py-2.5 text-sm font-medium text-ink-300 hover:bg-base-700/60 disabled:opacity-40"
+          >
+            Batal
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+function AddDeviceModal({
+  open,
+  onClose,
+  onAdded,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onAdded: (device: Device & { online: boolean }) => void;
+}) {
+  if (!open) return null;
+
+  function handleAdded(device: Device & { online: boolean }) {
+    onAdded(device);
+    onClose();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Tutup tambah perangkat"
+        onClick={onClose}
+        className="fixed inset-0 z-40 bg-base-950/70 backdrop-blur-sm"
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-xl border border-base-700 bg-base-800 p-5 shadow-2xl">
+          <AddDeviceForm onAdded={handleAdded} onCancel={onClose} />
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -274,6 +423,8 @@ export function ClientsManager({
   deployUrl: string;
 }) {
   const [devices, setDevices] = useState(initialDevices);
+  const [view, setView] = useState<ViewMode>('grid');
+  const [addOpen, setAddOpen] = useState(false);
 
   function handleAdded(device: Device & { online: boolean }) {
     setDevices((prev) => [...prev, device]);
@@ -320,18 +471,74 @@ export function ClientsManager({
           </div>
         </div>
 
-        {/* Grid perangkat + form tambah */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {devices.map((d) => (
-            <DeviceCard
-              key={d.id}
-              device={d}
-              onDeleted={handleDeleted}
-              deployUrl={deployUrl}
-            />
-          ))}
-          <AddDeviceForm onAdded={handleAdded} />
+        <div className="flex flex-col gap-3 rounded-xl border border-base-700 bg-base-800/45 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-ink-100">Perangkat Client</p>
+            <p className="mt-1 text-xs text-ink-500">
+              Kelola API key, script daemon, dan status sinkronisasi.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-base-700 bg-base-900 p-1">
+              <button
+                onClick={() => setView('grid')}
+                className={`rounded-md p-2 ${view === 'grid' ? 'bg-base-700 text-ink-100' : 'text-ink-500 hover:text-ink-100'}`}
+                title="Grid"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                  <path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setView('list')}
+                className={`rounded-md p-2 ${view === 'list' ? 'bg-base-700 text-ink-100' : 'text-ink-500 hover:text-ink-100'}`}
+                title="List"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                  <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <button
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-tg-500 px-4 py-2 text-sm font-medium text-white hover:bg-tg-600"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+              Tambah Perangkat
+            </button>
+          </div>
         </div>
+
+        {devices.length === 0 ? (
+          <div className="rounded-xl border border-base-700 bg-base-800/45 px-5 py-12 text-center">
+            <p className="text-sm font-medium text-ink-100">Belum ada perangkat terdaftar</p>
+            <p className="mt-1 text-xs text-ink-500">Tambahkan perangkat pertama untuk membuat API key daemon.</p>
+          </div>
+        ) : view === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {devices.map((d) => (
+              <DeviceCard
+                key={d.id}
+                device={d}
+                onDeleted={handleDeleted}
+                deployUrl={deployUrl}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-base-700 bg-base-800/50">
+            {devices.map((d) => (
+              <DeviceListRow
+                key={d.id}
+                device={d}
+                onDeleted={handleDeleted}
+                deployUrl={deployUrl}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Petunjuk singkat */}
         <div className="border border-base-700/60 rounded-xl p-5">
@@ -373,6 +580,12 @@ export function ClientsManager({
           </ol>
         </div>
       </main>
+
+      <AddDeviceModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdded={handleAdded}
+      />
     </div>
   );
 }
