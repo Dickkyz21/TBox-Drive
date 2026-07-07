@@ -371,8 +371,8 @@ class DesktopApp:
 
         self.root = tk.Tk()
         self.root.title(APP_NAME)
-        self.root.geometry("560x430")
-        self.root.minsize(520, 400)
+        self.root.geometry("560x520")
+        self.root.minsize(520, 500)
         self.root.configure(bg="#0E1117")
         self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
 
@@ -414,28 +414,28 @@ class DesktopApp:
         tk.Button(row, text="Pilih Folder", command=self.pick_folder, bg="#1F2733",
                   fg="#F3F5F7", relief="flat", padx=12, pady=6).pack(side="left", padx=(8, 0))
 
+        buttons = tk.Frame(frame, bg="#0E1117")
+        buttons.pack(fill="x", pady=(14, 10))
+        self.connect_btn = tk.Button(buttons, text="Connect", command=self.connect,
+                                     bg="#2AABEE", fg="white", relief="flat",
+                                     font=("Segoe UI", 11, "bold"), padx=26, pady=10)
+        self.connect_btn.pack(side="left", fill="x", expand=True)
+        tk.Button(buttons, text="Disconnect", command=self.disconnect, bg="#1F2733",
+                  fg="#F3F5F7", relief="flat", padx=14, pady=10).pack(side="left", padx=(8, 0))
+        tk.Button(buttons, text="Buka Folder", command=self.open_folder, bg="#1F2733",
+                  fg="#F3F5F7", relief="flat", padx=14, pady=10).pack(side="right", padx=(8, 0))
+
         tk.Checkbutton(frame, text="Jalankan otomatis saat komputer dinyalakan",
                        variable=self.autostart_var, bg="#0E1117", fg="#C7CED6",
                        selectcolor="#151A23", activebackground="#0E1117",
-                       font=("Segoe UI", 9)).pack(anchor="w", pady=(14, 12))
+                       font=("Segoe UI", 9)).pack(anchor="w", pady=(4, 12))
 
         status_box = tk.Frame(frame, bg="#151A23", padx=14, pady=12)
-        status_box.pack(fill="x", pady=(0, 14))
+        status_box.pack(fill="x")
         tk.Label(status_box, textvariable=self.status_var, bg="#151A23", fg="#2AABEE",
                  font=("Segoe UI", 11, "bold")).pack(anchor="w")
         tk.Label(status_box, textvariable=self.detail_var, bg="#151A23", fg="#8A93A1",
                  font=("Segoe UI", 9), wraplength=480, justify="left").pack(anchor="w", pady=(3, 0))
-
-        buttons = tk.Frame(frame, bg="#0E1117")
-        buttons.pack(fill="x")
-        self.connect_btn = tk.Button(buttons, text="Connect", command=self.connect,
-                                     bg="#2AABEE", fg="white", relief="flat",
-                                     font=("Segoe UI", 10, "bold"), padx=18, pady=8)
-        self.connect_btn.pack(side="left")
-        tk.Button(buttons, text="Disconnect", command=self.disconnect, bg="#1F2733",
-                  fg="#F3F5F7", relief="flat", padx=14, pady=8).pack(side="left", padx=(8, 0))
-        tk.Button(buttons, text="Buka Folder", command=self.open_folder, bg="#1F2733",
-                  fg="#F3F5F7", relief="flat", padx=14, pady=8).pack(side="right")
 
     def add_field(self, parent, label: str, variable: tk.StringVar, show: str | None = None) -> None:
         tk.Label(parent, text=label, bg="#0E1117", fg="#C7CED6",

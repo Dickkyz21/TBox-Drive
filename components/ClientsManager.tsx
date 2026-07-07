@@ -19,26 +19,6 @@ function StatusDot({ online }: { online: boolean }) {
   );
 }
 
-function downloadDeviceScript(device: Device, deployUrl: string) {
-  const script = `#!/bin/bash
-# TeleDrive Sync — ${device.name}
-# Dibuat otomatis dari TeleDrive web. Jangan bagikan file ini.
-cd "$(dirname "$0")"
-python3 daemon.py \\
-  --folder "${device.folderPath}" \\
-  --url "${deployUrl}" \\
-  --api-key "${device.apiKey}" \\
-  --client-id "${device.id}" \\
-  --interval 30 \\
-  --log-file ~/teledrive-${device.id.slice(0,8)}.log
-`;
-  const blob = new Blob([script], { type: 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `start-${device.name.replace(/\s+/g, '-').toLowerCase()}.sh`;
-  a.click();
-}
-
 function maskApiKey(apiKey: string): string {
   if (apiKey.length <= 12) return '••••••••••••';
   return `${apiKey.slice(0, 7)}••••••••••••••••${apiKey.slice(-5)}`;
@@ -47,11 +27,9 @@ function maskApiKey(apiKey: string): string {
 function DeviceCard({
   device,
   onDeleted,
-  deployUrl,
 }: {
   device: Device & { online: boolean };
   onDeleted: (id: string) => void;
-  deployUrl: string;
 }) {
   const [showKey, setShowKey] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -65,9 +43,6 @@ function DeviceCard({
     else setDeleting(false);
   }
 
-  function downloadScript() {
-    downloadDeviceScript(device, deployUrl);
-  }
 
   function copyKey() {
     navigator.clipboard.writeText(device.apiKey);
@@ -170,21 +145,11 @@ function DeviceCard({
             </div>
           </div>
           <p className="mt-2 text-[11px] leading-4 text-ink-500">
-            Key ini dipakai daemon untuk upload, heartbeat, dan sinkronisasi perangkat.
+            Key ini dipakai TeleDrive Desktop Client untuk connect, upload, heartbeat, dan sinkronisasi perangkat.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={downloadScript}
-            className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-tg-500/40 py-2.5 text-sm font-medium text-tg-500 transition-colors hover:bg-tg-500/10"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
-              <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14"
-                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Download Script (.sh)
-          </button>
+        <div className="grid grid-cols-1 gap-2">
           {showKey && (
             <button
               onClick={copyKey}
@@ -202,11 +167,9 @@ function DeviceCard({
 function DeviceListRow({
   device,
   onDeleted,
-  deployUrl,
 }: {
   device: Device & { online: boolean };
   onDeleted: (id: string) => void;
-  deployUrl: string;
 }) {
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -277,16 +240,6 @@ function DeviceListRow({
 
       <div className="flex items-center gap-2 lg:justify-end">
         <button
-          onClick={() => downloadDeviceScript(device, deployUrl)}
-          className="inline-flex items-center gap-2 rounded-lg border border-tg-500/40 px-3 py-2 text-sm font-medium text-tg-500 hover:bg-tg-500/10"
-        >
-          <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14"
-              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Script
-        </button>
-        <button
           onClick={handleDelete}
           disabled={deleting}
           className="rounded-lg border border-base-700 px-3 py-2 text-sm text-ink-500 hover:bg-base-700 hover:text-danger-400 disabled:opacity-50"
@@ -332,7 +285,7 @@ function AddDeviceForm({
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-sm text-ink-100">Tambah Perangkat</h3>
-          <p className="mt-1 text-xs text-ink-500">Buat API key baru untuk daemon lokal.</p>
+          <p className="mt-1 text-xs text-ink-500">Buat API key baru untuk TeleDrive Desktop Client.</p>
         </div>
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-tg-500/10 text-tg-500">
           <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
@@ -417,11 +370,9 @@ function AddDeviceModal({
 export function ClientsManager({
   initialDevices,
   fileCount,
-  deployUrl,
 }: {
   initialDevices: (Device & { online: boolean })[];
   fileCount: number;
-  deployUrl: string;
 }) {
   const [devices, setDevices] = useState(initialDevices);
   const [view, setView] = useState<ViewMode>('grid');
@@ -467,8 +418,8 @@ export function ClientsManager({
           </svg>
           <div className="text-xs text-ink-500 space-y-1">
             <p>Daftarkan setiap PC/laptop yang ingin tersinkron dengan TeleDrive.</p>
-            <p>Setiap perangkat mendapat <span className="text-ink-300">API key unik</span> — download script-nya, jalankan di PC tersebut, dan sinkronisasi berjalan otomatis.</p>
-            <p>Daemon masih harus <span className="text-ink-300">dijalankan di PC lokal</span> — Vercel tidak bisa menjalankan proses background.</p>
+            <p>Setiap perangkat mendapat <span className="text-ink-300">API key unik</span> untuk dipasang di TeleDrive Desktop Client.</p>
+            <p>Install client di PC lokal, paste API key, pilih folder sinkron, lalu klik <span className="text-ink-300">Connect</span>.</p>
           </div>
         </div>
 
@@ -509,7 +460,7 @@ export function ClientsManager({
           <div>
             <p className="text-sm font-semibold text-ink-100">Perangkat Client</p>
             <p className="mt-1 text-xs text-ink-500">
-              Kelola API key, script daemon, dan status sinkronisasi.
+              Kelola API key desktop client dan status sinkronisasi.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -548,7 +499,7 @@ export function ClientsManager({
         {devices.length === 0 ? (
           <div className="rounded-xl border border-base-700 bg-base-800/45 px-5 py-12 text-center">
             <p className="text-sm font-medium text-ink-100">Belum ada perangkat terdaftar</p>
-            <p className="mt-1 text-xs text-ink-500">Tambahkan perangkat pertama untuk membuat API key daemon.</p>
+            <p className="mt-1 text-xs text-ink-500">Tambahkan perangkat pertama untuk membuat API key desktop client.</p>
           </div>
         ) : view === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -557,7 +508,6 @@ export function ClientsManager({
                 key={d.id}
                 device={d}
                 onDeleted={handleDeleted}
-                deployUrl={deployUrl}
               />
             ))}
           </div>
@@ -568,7 +518,6 @@ export function ClientsManager({
                 key={d.id}
                 device={d}
                 onDeleted={handleDeleted}
-                deployUrl={deployUrl}
               />
             ))}
           </div>
@@ -594,27 +543,23 @@ export function ClientsManager({
           <ol className="space-y-3 text-xs text-ink-500">
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">1</span>
-              <span>Isi form di atas, klik <span className="text-ink-300">Daftarkan Perangkat</span>.</span>
+              <span>Klik <span className="text-ink-300">Download Client</span> dan install TeleDrive Desktop di PC tujuan.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">2</span>
-              <span>Klik <span className="text-ink-300">Download Script (.sh)</span> pada kartu perangkat baru.</span>
+              <span>Klik <span className="text-ink-300">Tambah Perangkat</span>, isi nama PC, lalu buat API key.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">3</span>
-              <span className="min-w-0 flex-1">Di PC tujuan, install Python dan watchdog:
-                <code className="mt-1 block rounded bg-base-900 px-3 py-1.5 font-mono text-ink-300">pip3 install requests watchdog</code>
-              </span>
+              <span>Copy API key perangkat dari halaman ini.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">4</span>
-              <span>Salin <code className="text-ink-300 font-mono">daemon.py</code> dan script yang didownload ke folder yang sama.</span>
+              <span>Buka TeleDrive Desktop, paste API key, lalu pilih folder lokal.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">5</span>
-              <span className="min-w-0 flex-1">Jalankan:
-                <code className="mt-1 block rounded bg-base-900 px-3 py-1.5 font-mono text-ink-300">bash start-nama-pc.sh</code>
-              </span>
+              <span>Klik <span className="text-ink-300">Connect</span> di aplikasi desktop.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">6</span>

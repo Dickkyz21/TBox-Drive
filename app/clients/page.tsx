@@ -2,7 +2,6 @@
 import { listDevices, listIndex, isDeviceOnline } from '@/lib/store';
 import { ClientsManager } from '@/components/ClientsManager';
 import { SetupNotice } from '@/components/SetupNotice';
-import { headers } from 'next/headers';
 import { isConfigured } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
@@ -37,17 +36,10 @@ export default async function ClientsPage() {
     online: isDeviceOnline(d),
   }));
 
-  // Ambil URL deployment dari request headers
-  const headersList = await headers();
-  const host = headersList.get('host') ?? '';
-  const proto = host.includes('localhost') ? 'http' : 'https';
-  const deployUrl = `${proto}://${host}`;
-
   return (
     <ClientsManager
       initialDevices={devicesWithStatus}
       fileCount={files.length}
-      deployUrl={deployUrl}
     />
   );
 }
