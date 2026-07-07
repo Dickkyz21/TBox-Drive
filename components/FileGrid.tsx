@@ -1,9 +1,10 @@
 // components/FileGrid.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { StoredFile } from '@/lib/telegram';
 import { FileCard } from './FileCard';
+import { Pagination } from './Pagination';
 import {
   CATEGORY_ACCENT,
   categoryOf,
@@ -134,6 +135,8 @@ export function FileGrid({
   const [sort, setSort] = useState<SortKey>('newest');
   const [view, setView] = useState<ViewMode>('grid');
   const [preview, setPreview] = useState<StoredFile | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filtered = useMemo(() => {
     const sorted = [...files].sort((a, b) => {
@@ -147,6 +150,21 @@ export function FileGrid({
     const q = query.toLowerCase();
     return sorted.filter((f) => f.name.toLowerCase().includes(q));
   }, [files, query, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, sort, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const summary = useMemo(() => {
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
@@ -246,7 +264,7 @@ export function FileGrid({
         </p>
       ) : view === 'grid' ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((file) => (
+          {paginated.map((file) => (
             <FileCard
               key={file.messageId}
               file={file}
@@ -257,7 +275,7 @@ export function FileGrid({
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-base-700 bg-base-800/45">
-          {filtered.map((file) => {
+          {paginated.map((file) => {
             const category = categoryOf(file.name);
             const accent = CATEGORY_ACCENT[category];
             return (
@@ -297,6 +315,15 @@ export function FileGrid({
           })}
         </div>
       )}
+
+      <Pagination
+        totalItems={filtered.length}
+        page={currentPage}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        itemLabel="file"
+      />
 
       <FilePreviewPanel file={preview} onClose={() => setPreview(null)} />
     </div>

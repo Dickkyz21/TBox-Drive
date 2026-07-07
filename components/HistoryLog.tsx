@@ -1,10 +1,11 @@
 // components/HistoryLog.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { LogEntry, LogAction } from '@/lib/store';
 import { Header } from './Header';
 import { formatRelative, formatDate } from '@/lib/format';
+import { Pagination } from './Pagination';
 
 const ACTION_CONFIG: Record<LogAction, { label: string; color: string }> = {
   upload:       { label: 'Upload',        color: '#2AABEE' },
@@ -23,6 +24,22 @@ export function HistoryLog({
   fileCount: number;
 }) {
   const [logs] = useState<LogEntry[]>(initialLogs);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const totalPages = Math.max(1, Math.ceil(logs.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return logs.slice(start, start + pageSize);
+  }, [logs, currentPage, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize]);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -41,7 +58,7 @@ export function HistoryLog({
           </div>
         ) : (
           <div className="space-y-1">
-            {logs.map((entry) => {
+            {paginatedLogs.map((entry) => {
               const cfg = ACTION_CONFIG[entry.action] ?? {
                 label: entry.action,
                 color: '#8A93A1',
@@ -78,6 +95,17 @@ export function HistoryLog({
             })}
           </div>
         )}
+
+        <div className="mt-5">
+          <Pagination
+            totalItems={logs.length}
+            page={currentPage}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="aktivitas"
+          />
+        </div>
       </main>
     </div>
   );

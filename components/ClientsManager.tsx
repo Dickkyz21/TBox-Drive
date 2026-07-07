@@ -1,10 +1,11 @@
 // components/ClientsManager.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Device } from '@/lib/store';
 import { Header } from './Header';
 import { formatRelative } from '@/lib/format';
+import { Pagination } from './Pagination';
 
 type ViewMode = 'grid' | 'list';
 
@@ -425,6 +426,8 @@ export function ClientsManager({
   const [devices, setDevices] = useState(initialDevices);
   const [view, setView] = useState<ViewMode>('grid');
   const [addOpen, setAddOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   function handleAdded(device: Device & { online: boolean }) {
     setDevices((prev) => [...prev, device]);
@@ -436,6 +439,20 @@ export function ClientsManager({
 
   const online  = devices.filter((d) => d.online).length;
   const offline = devices.filter((d) => !d.online).length;
+  const totalPages = Math.max(1, Math.ceil(devices.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedDevices = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return devices.slice(start, start + pageSize);
+  }, [devices, currentPage, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize]);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -518,7 +535,7 @@ export function ClientsManager({
           </div>
         ) : view === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {devices.map((d) => (
+            {paginatedDevices.map((d) => (
               <DeviceCard
                 key={d.id}
                 device={d}
@@ -529,7 +546,7 @@ export function ClientsManager({
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-base-700 bg-base-800/50">
-            {devices.map((d) => (
+            {paginatedDevices.map((d) => (
               <DeviceListRow
                 key={d.id}
                 device={d}
@@ -539,6 +556,15 @@ export function ClientsManager({
             ))}
           </div>
         )}
+
+        <Pagination
+          totalItems={devices.length}
+          page={currentPage}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="perangkat"
+        />
 
         {/* Petunjuk singkat */}
         <div className="border border-base-700/60 rounded-xl p-5">

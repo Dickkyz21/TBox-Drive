@@ -1,11 +1,12 @@
 // components/NotesBoard.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { StoredNote } from '@/lib/telegram';
 import { Header } from './Header';
 import { NoteCard } from './NoteCard';
 import { NoteEditor } from './NoteEditor';
+import { Pagination } from './Pagination';
 
 export function NotesBoard({
   initialNotes,
@@ -16,6 +17,22 @@ export function NotesBoard({
 }) {
   const [notes, setNotes] = useState<StoredNote[]>(initialNotes);
   const [editing, setEditing] = useState<StoredNote | null | 'new'>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const totalPages = Math.max(1, Math.ceil(notes.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedNotes = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return notes.slice(start, start + pageSize);
+  }, [notes, currentPage, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize]);
 
   function handleSaved(note: StoredNote) {
     setNotes((prev) => {
@@ -59,7 +76,7 @@ export function NotesBoard({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {notes.map((note) => (
+            {paginatedNotes.map((note) => (
               <NoteCard
                 key={note.id}
                 note={note}
@@ -69,6 +86,15 @@ export function NotesBoard({
             ))}
           </div>
         )}
+
+        <Pagination
+          totalItems={notes.length}
+          page={currentPage}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="catatan"
+        />
       </main>
 
       {editing !== null && (
