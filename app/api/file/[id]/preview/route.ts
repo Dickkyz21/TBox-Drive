@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDownloadUrl } from '@/lib/telegram';
 import { findInIndex } from '@/lib/store';
-import { categoryOf, extOf, isTextPreviewExt } from '@/lib/format';
+import { categoryOf, extOf, isTextPreviewExt, mimeFromFilename } from '@/lib/format';
 
-function previewContentType(filename: string, mime: string): string {
+function previewContentType(filename: string, mime = ''): string {
   const ext = extOf(filename);
   if (ext === 'pdf') return 'application/pdf';
-  if (ext === 'webm') return 'video/webm';
-  if (ext === 'ogv') return 'video/ogg';
-  if (categoryOf(filename) === 'video') return 'video/mp4';
   if (isTextPreviewExt(filename)) return 'text/plain; charset=utf-8';
   if (mime.startsWith('text/')) return 'text/plain; charset=utf-8';
+  if (categoryOf(filename) === 'video') return mimeFromFilename(filename, mime || 'video/mp4');
   if (mime) return mime;
-  return 'application/octet-stream';
+  return mimeFromFilename(filename);
 }
 
 function inlineDisposition(filename: string): string {

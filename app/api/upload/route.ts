@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadFile, isConfigured } from '@/lib/telegram';
 import { addToIndex, addLog, isStoreConfigured, listFolders } from '@/lib/store';
-import { formatBytes } from '@/lib/format';
+import { formatBytes, mimeFromFilename } from '@/lib/format';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const stored = await uploadFile(file, filename, file.type, folderId);
+    const mime = mimeFromFilename(filename, file.type || 'application/octet-stream');
+    const stored = await uploadFile(file, filename, mime, folderId);
     await addToIndex(stored);
     await addLog('upload', stored.name, formatBytes(stored.size));
 

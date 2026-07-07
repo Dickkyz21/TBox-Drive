@@ -40,7 +40,13 @@ function uploadWithProgress(
           reject(new Error(data.error || 'Upload gagal.'));
         }
       } catch {
-        reject(new Error('Respons server tidak valid.'));
+        if (xhr.status === 413) {
+          reject(new Error('Ukuran file terlalu besar untuk diterima server/Vercel.'));
+        } else if (xhr.status >= 500) {
+          reject(new Error('Server gagal memproses upload. Coba file lebih kecil atau cek konfigurasi deploy.'));
+        } else {
+          reject(new Error('Upload gagal: respons server tidak valid.'));
+        }
       }
     };
 

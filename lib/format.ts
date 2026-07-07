@@ -55,6 +55,14 @@ const VIDEO_EXT = [
   'mts',
   'm2ts',
   'ogv',
+  'asf',
+  'divx',
+  'f4v',
+  'mpe',
+  'mod',
+  'rm',
+  'rmvb',
+  'vob',
 ];
 const AUDIO_EXT = ['mp3', 'wav', 'ogg', 'flac', 'm4a'];
 const ARCHIVE_EXT = ['zip', 'rar', '7z', 'tar', 'gz'];
@@ -124,6 +132,27 @@ export function categoryOf(name: string): FileCategory {
 
 export function isTextPreviewExt(name: string): boolean {
   return TEXT_PREVIEW_EXT.includes(extOf(name));
+}
+
+export function mimeFromFilename(name: string, fallback = 'application/octet-stream'): string {
+  const ext = extOf(name);
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'webm') return 'video/webm';
+  if (ext === 'ogv') return 'video/ogg';
+  if (ext === 'mov') return 'video/quicktime';
+  if (ext === 'mkv') return 'video/x-matroska';
+  if (ext === 'avi') return 'video/x-msvideo';
+  if (ext === 'wmv') return 'video/x-ms-wmv';
+  if (ext === 'flv') return 'video/x-flv';
+  if (ext === 'm4v') return 'video/x-m4v';
+  if (ext === 'asf') return 'video/x-ms-asf';
+  if (ext === 'vob') return 'video/dvd';
+  if (ext === 'rm' || ext === 'rmvb') return 'application/vnd.rn-realmedia';
+  if (['mp4', '3gp', '3g2', 'mpeg', 'mpg', 'mpe', 'ts', 'mts', 'm2ts', 'f4v', 'divx', 'mod'].includes(ext)) {
+    return 'video/mp4';
+  }
+  if (isTextPreviewExt(name)) return 'text/plain; charset=utf-8';
+  return fallback;
 }
 
 export const CATEGORY_ACCENT: Record<FileCategory, string> = {

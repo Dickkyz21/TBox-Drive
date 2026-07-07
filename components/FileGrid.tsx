@@ -31,7 +31,7 @@ function isPreviewable(file: StoredFile): boolean {
     file.mime === 'application/pdf' ||
     ext === 'pdf' ||
     isTextPreviewExt(file.name) ||
-    file.mime.startsWith('text/')
+    (file.mime || '').startsWith('text/')
   );
 }
 
@@ -55,14 +55,52 @@ function FilePreviewPanel({
   file: StoredFile | null;
   onClose: () => void;
 }) {
-  if (!file) return null;
+  const [textPreview, setTextPreview] = useState<string | null>(null);
+  const [textError, setTextError] = useState<string | null>(null);
+  const [textLoading, setTextLoading] = useState(false);
 
-  const category = categoryOf(file.name);
+  const category = file ? categoryOf(file.name) : 'other';
   const accent = CATEGORY_ACCENT[category];
-  const ext = extOf(file.name).toUpperCase() || 'FILE';
-  const previewUrl = `/api/file/${file.messageId}/preview`;
-  const downloadUrl = `/api/file/${file.messageId}/download`;
-  const canEmbed = isPreviewable(file);
+  const ext = file ? extOf(file.name).toUpperCase() || 'FILE' : 'FILE';
+  const previewUrl = file ? `/api/file/${file.messageId}/preview` : '';
+  const downloadUrl = file ? `/api/file/${file.messageId}/download` : '';
+  const isTextPreview = Boolean(
+    file && (isTextPreviewExt(file.name) || (file.mime || '').startsWith('text/'))
+  );
+  const canEmbed = file ? isPreviewable(file) : false;
+
+  useEffect(() => {
+    let cancelled = false;
+    setTextPreview(null);
+    setTextError(null);
+
+    if (!file || !isTextPreview) {
+      setTextLoading(false);
+      return;
+    }
+
+    setTextLoading(true);
+    fetch(`/api/file/${file.messageId}/preview`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Gagal memuat preview teks.');
+        return res.text();
+      })
+      .then((text) => {
+        if (!cancelled) setTextPreview(text);
+      })
+      .catch((err) => {
+        if (!cancelled) setTextError(err.message || 'Gagal memuat preview teks.');
+      })
+      .finally(() => {
+        if (!cancelled) setTextLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [file, isTextPreview]);
+
+  if (!file) return null;
 
   return (
     <>
@@ -111,6 +149,25 @@ function FilePreviewPanel({
               >
                 Browser tidak mendukung preview video ini.
               </video>
+            </div>
+          ) : isTextPreview ? (
+            <div className="min-h-full bg-base-950 p-0">
+              {textLoading ? (
+                <div className="flex min-h-[70vh] items-center justify-center text-sm text-ink-500">
+                  Memuat preview teks...
+                </div>
+              ) : textError ? (
+                <div className="flex min-h-[70vh] items-center justify-center p-8 text-center">
+                  <div>
+                    <p className="text-sm font-semibold text-ink-100">Preview teks gagal dimuat</p>
+                    <p className="mt-1 text-xs text-ink-500">{textError}</p>
+                  </div>
+                </div>
+              ) : (
+                <pre className="min-h-[70vh] whitespace-pre-wrap break-words p-5 font-mono text-xs leading-5 text-ink-300">
+                  {textPreview}
+                </pre>
+              )}
             </div>
           ) : canEmbed ? (
             <iframe
