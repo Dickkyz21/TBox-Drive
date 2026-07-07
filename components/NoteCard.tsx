@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import type { StoredNote } from '@/lib/telegram';
 import { formatRelative } from '@/lib/format';
+import { getNoteColor } from '@/lib/notes';
 
 export function NoteCard({
   note,
@@ -16,6 +17,12 @@ export function NoteCard({
 }) {
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const color = getNoteColor(note.color);
+  const taskLines = note.body
+    .split('\n')
+    .map((line) => line.trim().replace(/^[-*]\s+/, '').replace(/^\[[ xX]\]\s+/, ''))
+    .filter(Boolean)
+    .slice(0, 5);
 
   async function handleDelete() {
     setDeleting(true);
@@ -28,15 +35,16 @@ export function NoteCard({
   }
 
   return (
-    <div className="group relative bg-base-800/70 border border-base-700 rounded-xl p-4 hover:border-base-600 transition-colors flex flex-col min-h-[160px]">
-      <div className="flex items-start justify-between mb-2">
-        <h3 className="text-sm font-semibold text-ink-100 line-clamp-1 pr-2">
+    <div className={`group relative ${color.card} border rounded-sm p-4 shadow-[0_16px_35px_-22px_rgba(0,0,0,0.75)] hover:-translate-y-1 hover:rotate-0 transition-all flex flex-col min-h-[210px] rotate-[-1deg]`}>
+      <span className={`absolute left-1/2 top-2 h-2.5 w-10 -translate-x-1/2 rounded-full ${color.pin} shadow-sm`} />
+      <div className="flex items-start justify-between mb-3 pt-3">
+        <h3 className="text-base font-bold leading-snug line-clamp-2 pr-2">
           {note.title}
         </h3>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <button
             onClick={onEdit}
-            className="p-1.5 rounded-md text-ink-500 hover:text-tg-500 hover:bg-base-700 transition-colors"
+            className="p-1.5 rounded-md text-slate-700 hover:text-slate-950 hover:bg-white/35 transition-colors"
             title="Edit"
           >
             <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5">
@@ -45,7 +53,7 @@ export function NoteCard({
           </button>
           <button
             onClick={() => setConfirmOpen(true)}
-            className="p-1.5 rounded-md text-ink-500 hover:text-danger-400 hover:bg-base-700 transition-colors"
+            className="p-1.5 rounded-md text-slate-700 hover:text-red-700 hover:bg-white/35 transition-colors"
             title="Hapus"
           >
             <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5">
@@ -55,17 +63,26 @@ export function NoteCard({
         </div>
       </div>
 
-      <p className="text-xs text-ink-300 whitespace-pre-wrap line-clamp-5 flex-1">
-        {note.body || <span className="text-ink-500 italic">Tidak ada isi</span>}
-      </p>
+      <div className="flex-1 space-y-2">
+        {taskLines.length > 0 ? (
+          taskLines.map((line, index) => (
+            <div key={`${note.id}-${index}`} className="flex items-start gap-2 text-sm leading-relaxed">
+              <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded border-2 border-slate-600/70 bg-white/35" />
+              <p className="line-clamp-2">{line}</p>
+            </div>
+          ))
+        ) : (
+          <p className={`text-sm italic ${color.muted}`}>Tidak ada isi</p>
+        )}
+      </div>
 
-      <p className="text-xs font-mono text-ink-500 mt-3 pt-3 border-t border-base-700/60">
+      <p className={`text-xs font-mono ${color.muted} mt-4 pt-3 border-t ${color.line}`}>
         {note.updatedAt !== note.createdAt ? 'Diedit ' : ''}
         {formatRelative(note.updatedAt)}
       </p>
 
       {confirmOpen && (
-        <div className="absolute inset-0 bg-base-900/95 rounded-xl flex flex-col items-center justify-center gap-3 p-4 backdrop-blur-sm">
+        <div className="absolute inset-0 bg-slate-950/90 rounded-sm flex flex-col items-center justify-center gap-3 p-4 backdrop-blur-sm">
           <p className="text-xs text-ink-300 text-center">
             Hapus catatan ini secara permanen?
           </p>

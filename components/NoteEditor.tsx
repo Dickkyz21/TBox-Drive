@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import type { StoredNote } from '@/lib/telegram';
+import { DEFAULT_NOTE_COLOR, NOTE_COLORS, getNoteColor, type NoteColor } from '@/lib/notes';
 
 const MAX_TITLE_LENGTH = 120;
 const MAX_BODY_LENGTH = 3000;
@@ -18,8 +19,10 @@ export function NoteEditor({
 }) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
+  const [color, setColor] = useState<NoteColor>(initial?.color ?? DEFAULT_NOTE_COLOR);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const activeColor = getNoteColor(color);
 
   async function handleSave() {
     if (!title.trim() && !body.trim()) {
@@ -43,13 +46,13 @@ export function NoteEditor({
         res = await fetch(`/api/notes/${initial.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, body }),
+          body: JSON.stringify({ title, body, color }),
         });
       } else {
         res = await fetch('/api/notes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, body }),
+          body: JSON.stringify({ title, body, color }),
         });
       }
 
@@ -69,28 +72,47 @@ export function NoteEditor({
 
   return (
     <div className="fixed inset-0 bg-base-950/70 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-lg bg-base-800 border border-base-700 rounded-2xl p-6 shadow-glow">
-        <h2 className="font-display font-semibold text-lg mb-4">
-          {initial ? 'Edit Catatan' : 'Catatan Baru'}
-        </h2>
+      <div className="w-full max-w-2xl bg-base-800 border border-base-700 rounded-2xl p-5 sm:p-6 shadow-glow">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h2 className="font-display font-semibold text-lg">
+            {initial ? 'Edit Catatan' : 'Catatan Baru'}
+          </h2>
+          <div className="flex items-center gap-2">
+            {NOTE_COLORS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setColor(item.id)}
+                className={`h-6 w-6 rounded-full ${item.swatch} border-2 transition-transform ${
+                  color === item.id
+                    ? 'border-white scale-110'
+                    : 'border-base-600 hover:scale-105'
+                }`}
+                title={item.label}
+              />
+            ))}
+          </div>
+        </div>
 
-        <input
-          autoFocus
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={MAX_TITLE_LENGTH}
-          placeholder="Judul"
-          className="w-full bg-base-900 border border-base-700 rounded-lg px-3.5 py-2.5 text-sm font-medium text-ink-100 placeholder:text-ink-500/60 focus:border-tg-500 transition-colors mb-3"
-        />
+        <div className={`${activeColor.card} rounded-sm border p-4 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.85)]`}>
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={MAX_TITLE_LENGTH}
+            placeholder="Judul"
+            className="w-full bg-transparent border-b border-slate-700/25 px-0 pb-3 text-base font-bold text-slate-950 placeholder:text-slate-700/60 focus:border-slate-900/45 transition-colors mb-3"
+          />
 
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          maxLength={MAX_BODY_LENGTH}
-          placeholder="Tulis catatan di sini..."
-          rows={8}
-          className="w-full bg-base-900 border border-base-700 rounded-lg px-3.5 py-2.5 text-sm text-ink-100 placeholder:text-ink-500/60 focus:border-tg-500 transition-colors resize-none"
-        />
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            maxLength={MAX_BODY_LENGTH}
+            placeholder="- Tulis task pertama&#10;- Tulis task berikutnya"
+            rows={9}
+            className="w-full bg-transparent text-sm leading-7 text-slate-950 placeholder:text-slate-700/60 transition-colors resize-none"
+          />
+        </div>
 
         <div className="mt-2 flex items-center justify-between gap-3">
           {error ? (

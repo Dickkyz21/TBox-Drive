@@ -8,6 +8,7 @@ import {
   addLog,
   isStoreConfigured,
 } from '@/lib/store';
+import { normalizeNoteColor } from '@/lib/notes';
 
 const MAX_TITLE_LENGTH = 120;
 const MAX_BODY_LENGTH = 3000;
@@ -36,9 +37,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Note tidak ditemukan.' }, { status: 404 });
     }
 
-    const { title, body } = await req.json();
+    const { title, body, color } = await req.json();
     const trimmedTitle = (title ?? '').trim() || 'Tanpa judul';
     const trimmedBody = (body ?? '').trim();
+    const noteColor = normalizeNoteColor(color ?? existing.color);
 
     if (trimmedTitle.length > MAX_TITLE_LENGTH) {
       return NextResponse.json(
@@ -59,12 +61,14 @@ export async function PATCH(
       id,
       trimmedTitle,
       trimmedBody,
+      noteColor,
       existing.createdAt
     );
 
     const updated = await updateNoteInIndex(id, {
       title: trimmedTitle,
       body: trimmedBody,
+      color: noteColor,
       updatedAt,
     });
 

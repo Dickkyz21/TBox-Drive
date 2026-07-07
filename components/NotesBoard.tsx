@@ -33,12 +33,16 @@ export function NotesBoard({
   return (
     <div className="max-w-6xl mx-auto">
       <Header fileCount={fileCount} />
-      <main className="px-6 sm:px-8 py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-ink-500">{notes.length} catatan</p>
+      <main className="px-6 sm:px-8 py-8 space-y-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-tg-500 font-semibold">Task Notes</p>
+            <h1 className="font-display text-2xl font-semibold text-ink-100 mt-1">Catatan To-Do</h1>
+            <p className="text-sm text-ink-500 mt-1">{notes.length} sticky note aktif</p>
+          </div>
           <button
             onClick={() => setEditing('new')}
-            className="flex items-center gap-1.5 text-sm font-medium bg-gradient-to-r from-tg-500 to-tg-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            className="flex items-center justify-center gap-1.5 text-sm font-medium bg-gradient-to-r from-tg-500 to-tg-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
             <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
               <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -48,13 +52,13 @@ export function NotesBoard({
         </div>
 
         {notes.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-ink-500 text-sm">
+          <div className="mx-auto max-w-sm rotate-[-1deg] rounded-sm border border-yellow-100 bg-yellow-200 p-6 text-center text-slate-950 shadow-[0_18px_45px_-28px_rgba(0,0,0,0.85)]">
+            <p className="text-sm font-semibold">
               Belum ada catatan. Buat catatan pertamamu.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {notes.map((note) => (
               <NoteCard
                 key={note.id}

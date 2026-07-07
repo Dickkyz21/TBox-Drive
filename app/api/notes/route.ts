@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendNote, isConfigured } from '@/lib/telegram';
 import { addNoteToIndex, listNotes, addLog, isStoreConfigured } from '@/lib/store';
 import type { StoredNote } from '@/lib/telegram';
+import { normalizeNoteColor } from '@/lib/notes';
 
 const MAX_TITLE_LENGTH = 120;
 const MAX_BODY_LENGTH = 3000;
@@ -51,9 +52,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { title, body } = await req.json();
+    const { title, body, color } = await req.json();
     const trimmedTitle = (title ?? '').trim();
     const trimmedBody = (body ?? '').trim();
+    const noteColor = normalizeNoteColor(color);
 
     if (trimmedTitle.length > MAX_TITLE_LENGTH) {
       return NextResponse.json(
@@ -79,13 +81,14 @@ export async function POST(req: NextRequest) {
     const id = newId();
     const finalTitle = trimmedTitle || 'Tanpa judul';
 
-    const { messageId, createdAt } = await sendNote(id, finalTitle, trimmedBody);
+    const { messageId, createdAt } = await sendNote(id, finalTitle, trimmedBody, noteColor);
 
     const note: StoredNote = {
       messageId,
       id,
       title: finalTitle,
       body: trimmedBody,
+      color: noteColor,
       createdAt,
       updatedAt: createdAt,
     };

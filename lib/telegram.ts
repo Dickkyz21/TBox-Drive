@@ -9,6 +9,8 @@
 // sehari-hari — Telegram di sini berperan sebagai backup permanen +
 // storage fisik untuk file, bukan dibaca langsung saat render normal.
 
+import type { NoteColor } from './notes';
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
@@ -37,6 +39,7 @@ export type StoredNote = {
   id: string;
   title: string;
   body: string;
+  color?: NoteColor;
   createdAt: string;
   updatedAt: string;
 };
@@ -45,6 +48,7 @@ type NoteMeta = {
   id: string;
   ti: string; // title
   b: string; // body
+  co?: NoteColor; // sticky note color
   c: string; // createdAt
   u: string; // updatedAt
 };
@@ -188,12 +192,13 @@ function decodeNoteText(text: string | undefined): NoteMeta | null {
 export async function sendNote(
   id: string,
   title: string,
-  body: string
+  body: string,
+  color: NoteColor
 ): Promise<{ messageId: number; createdAt: string }> {
   assertConfigured();
 
   const now = new Date().toISOString();
-  const meta: NoteMeta = { id, ti: title, b: body, c: now, u: now };
+  const meta: NoteMeta = { id, ti: title, b: body, co: color, c: now, u: now };
   const text = encodeNoteText(meta);
 
   if (text.length > TELEGRAM_MESSAGE_LIMIT) {
@@ -224,12 +229,13 @@ export async function editNote(
   id: string,
   title: string,
   body: string,
+  color: NoteColor,
   createdAt: string
 ): Promise<{ updatedAt: string }> {
   assertConfigured();
 
   const updatedAt = new Date().toISOString();
-  const meta: NoteMeta = { id, ti: title, b: body, c: createdAt, u: updatedAt };
+  const meta: NoteMeta = { id, ti: title, b: body, co: color, c: createdAt, u: updatedAt };
   const text = encodeNoteText(meta);
 
   if (text.length > TELEGRAM_MESSAGE_LIMIT) {
@@ -319,6 +325,7 @@ export async function pullPendingUpdates(): Promise<PulledData> {
             id: meta.id,
             title: meta.ti,
             body: meta.b,
+            color: meta.co,
             createdAt: meta.c,
             updatedAt: meta.u,
           });

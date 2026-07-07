@@ -134,7 +134,7 @@ export async function findNoteInIndex(id: string): Promise<StoredNote | null> {
 
 export async function updateNoteInIndex(
   id: string,
-  patch: Partial<Pick<StoredNote, 'title' | 'body' | 'updatedAt' | 'messageId'>>
+  patch: Partial<Pick<StoredNote, 'title' | 'body' | 'color' | 'updatedAt' | 'messageId'>>
 ): Promise<StoredNote | null> {
   const found = await findNoteRaw(id);
   if (!found) return null;
