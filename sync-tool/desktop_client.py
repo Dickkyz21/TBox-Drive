@@ -28,8 +28,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import ctypes
 from dataclasses import dataclass
 from pathlib import Path
+from ctypes import wintypes
 from tkinter import filedialog, messagebox, ttk
 import tkinter as tk
 
@@ -53,6 +55,141 @@ CONFIG_FILE = app_dir() / "desktop-client.json"
 LOG_FILE = app_dir() / "desktop-client.log"
 
 
+class WindowsTrayIcon:
+    WM_TRAYICON = 0x800 + 20
+    WM_DESTROY = 0x0002
+    WM_LBUTTONUP = 0x0202
+    WM_LBUTTONDBLCLK = 0x0203
+    WM_RBUTTONUP = 0x0205
+    NIM_ADD = 0x00000000
+    NIM_DELETE = 0x00000002
+    NIF_MESSAGE = 0x00000001
+    NIF_ICON = 0x00000002
+    NIF_TIP = 0x00000004
+    ID_SHOW = 1001
+    ID_CONNECT = 1002
+    ID_EXIT = 1003
+
+    class POINT(ctypes.Structure):
+        _fields_ = [("x", wintypes.LONG), ("y", wintypes.LONG)]
+
+    class NOTIFYICONDATA(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("hWnd", wintypes.HWND),
+            ("uID", wintypes.UINT),
+            ("uFlags", wintypes.UINT),
+            ("uCallbackMessage", wintypes.UINT),
+            ("hIcon", wintypes.HICON),
+            ("szTip", wintypes.WCHAR * 128),
+            ("dwState", wintypes.DWORD),
+            ("dwStateMask", wintypes.DWORD),
+            ("szInfo", wintypes.WCHAR * 256),
+            ("uTimeoutOrVersion", wintypes.UINT),
+            ("szInfoTitle", wintypes.WCHAR * 64),
+            ("dwInfoFlags", wintypes.DWORD),
+        ]
+
+    def __init__(self, app: "DesktopApp"):
+        self.app = app
+        self.root = app.root
+        self.user32 = ctypes.windll.user32
+        self.shell32 = ctypes.windll.shell32
+        self.hwnd = wintypes.HWND(self.root.winfo_id())
+        self.icon_id = 1
+        self._proc_ref = None
+        self._old_proc = None
+        self._setup_api()
+        self._subclass_window()
+        self._add_icon()
+
+    def _setup_api(self) -> None:
+        self.shell32.Shell_NotifyIconW.argtypes = [wintypes.DWORD, ctypes.POINTER(self.NOTIFYICONDATA)]
+        self.shell32.Shell_NotifyIconW.restype = wintypes.BOOL
+        self.user32.LoadIconW.argtypes = [wintypes.HINSTANCE, wintypes.LPCWSTR]
+        self.user32.LoadIconW.restype = wintypes.HICON
+        self.user32.CreatePopupMenu.restype = wintypes.HMENU
+        self.user32.AppendMenuW.argtypes = [wintypes.HMENU, wintypes.UINT, wintypes.WPARAM, wintypes.LPCWSTR]
+        self.user32.TrackPopupMenu.argtypes = [
+            wintypes.HMENU,
+            wintypes.UINT,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            wintypes.HWND,
+            wintypes.LPVOID,
+        ]
+        self.user32.TrackPopupMenu.restype = wintypes.UINT
+
+    def _subclass_window(self) -> None:
+        callback_type = ctypes.WINFUNCTYPE(
+            wintypes.LRESULT,
+            wintypes.HWND,
+            wintypes.UINT,
+            wintypes.WPARAM,
+            wintypes.LPARAM,
+        )
+        self._proc_ref = callback_type(self._window_proc)
+        if ctypes.sizeof(ctypes.c_void_p) == 8:
+            set_window_long = self.user32.SetWindowLongPtrW
+        else:
+            set_window_long = self.user32.SetWindowLongW
+        self._call_window_proc = self.user32.CallWindowProcW
+        set_window_long.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_void_p]
+        set_window_long.restype = ctypes.c_void_p
+        self._call_window_proc.argtypes = [ctypes.c_void_p, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+        self._call_window_proc.restype = wintypes.LRESULT
+        self._old_proc = set_window_long(self.hwnd, -4, self._proc_ref)
+
+    def _window_proc(self, hwnd, msg, wparam, lparam):
+        if msg == self.WM_TRAYICON:
+            if lparam in (self.WM_LBUTTONUP, self.WM_LBUTTONDBLCLK):
+                self.root.after(0, self.app.show_window)
+            elif lparam == self.WM_RBUTTONUP:
+                self.root.after(0, self.show_menu)
+            return 0
+        if msg == self.WM_DESTROY:
+            self.remove()
+        return self._call_window_proc(self._old_proc, hwnd, msg, wparam, lparam)
+
+    def _icon_data(self) -> "WindowsTrayIcon.NOTIFYICONDATA":
+        data = self.NOTIFYICONDATA()
+        data.cbSize = ctypes.sizeof(self.NOTIFYICONDATA)
+        data.hWnd = self.hwnd
+        data.uID = self.icon_id
+        data.uFlags = self.NIF_MESSAGE | self.NIF_ICON | self.NIF_TIP
+        data.uCallbackMessage = self.WM_TRAYICON
+        app_icon = ctypes.cast(ctypes.c_void_p(32512), wintypes.LPCWSTR)
+        data.hIcon = self.user32.LoadIconW(None, app_icon)
+        data.szTip = APP_NAME
+        return data
+
+    def _add_icon(self) -> None:
+        self.shell32.Shell_NotifyIconW(self.NIM_ADD, ctypes.byref(self._icon_data()))
+
+    def remove(self) -> None:
+        try:
+            self.shell32.Shell_NotifyIconW(self.NIM_DELETE, ctypes.byref(self._icon_data()))
+        except Exception:
+            pass
+
+    def show_menu(self) -> None:
+        menu = self.user32.CreatePopupMenu()
+        connect_label = "Disconnect" if self.app.worker else "Connect"
+        self.user32.AppendMenuW(menu, 0, self.ID_SHOW, "Show TeleDrive")
+        self.user32.AppendMenuW(menu, 0, self.ID_CONNECT, connect_label)
+        self.user32.AppendMenuW(menu, 0, self.ID_EXIT, "Exit")
+        point = self.POINT()
+        self.user32.GetCursorPos(ctypes.byref(point))
+        self.user32.SetForegroundWindow(self.hwnd)
+        command = self.user32.TrackPopupMenu(menu, 0x0100, point.x, point.y, 0, self.hwnd, None)
+        self.user32.DestroyMenu(menu)
+        if command == self.ID_SHOW:
+            self.app.show_window()
+        elif command == self.ID_CONNECT:
+            self.app.disconnect() if self.app.worker else self.app.connect()
+        elif command == self.ID_EXIT:
+            self.app.quit_app()
 def log(message: str) -> None:
     line = f"{time.strftime('%Y-%m-%d %H:%M:%S')}  {message}\n"
     LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -97,6 +234,10 @@ def set_autostart(enabled: bool) -> None:
     system = platform.system()
 
     if system == "Windows":
+        if not getattr(sys, "frozen", False):
+            pythonw = Path(sys.executable).with_name("pythonw.exe")
+            runner = pythonw if pythonw.exists() else Path(sys.executable)
+            executable = f'"{runner}" "{Path(__file__).resolve()}"'
         try:
             import winreg
             key = winreg.OpenKey(
@@ -368,6 +509,7 @@ class DesktopApp:
         self.config = load_config()
         self.events: queue.Queue = queue.Queue()
         self.worker: SyncWorker | None = None
+        self.tray_icon: WindowsTrayIcon | None = None
 
         self.root = tk.Tk()
         self.root.title(APP_NAME)
@@ -384,6 +526,7 @@ class DesktopApp:
         self.detail_var = tk.StringVar(value="Isi API key, pilih folder, lalu klik Connect.")
 
         self.build_ui()
+        self.root.after(100, self.init_tray)
         self.root.after(400, self.process_events)
 
     def build_ui(self) -> None:
@@ -500,8 +643,35 @@ class DesktopApp:
         else:
             subprocess.Popen(["open", str(folder)])
 
+    def init_tray(self) -> None:
+        if platform.system() != "Windows":
+            return
+        try:
+            self.root.update_idletasks()
+            self.tray_icon = WindowsTrayIcon(self)
+        except Exception as exc:
+            self.tray_icon = None
+            log(f"Tray init gagal: {exc}")
+
+    def show_window(self) -> None:
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+
     def hide_window(self) -> None:
-        self.root.iconify()
+        if self.tray_icon:
+            self.root.withdraw()
+        else:
+            self.root.iconify()
+
+    def quit_app(self) -> None:
+        if self.worker:
+            self.worker.stop()
+            self.worker = None
+        if self.tray_icon:
+            self.tray_icon.remove()
+            self.tray_icon = None
+        self.root.destroy()
 
     def run(self) -> None:
         if self.config["server_url"] and self.config["api_key"]:
