@@ -3,21 +3,31 @@
 
 import { useState } from 'react';
 import type { StoredFile } from '@/lib/telegram';
-import { formatBytes, formatDate, categoryOf, CATEGORY_ACCENT } from '@/lib/format';
+import {
+  formatBytes,
+  formatDate,
+  categoryOf,
+  CATEGORY_ACCENT,
+  extOf,
+} from '@/lib/format';
 import { FileIcon } from './FileIcon';
 
 export function FileCard({
   file,
   onDeleted,
+  onPreview,
 }: {
   file: StoredFile;
   onDeleted: (messageId: number) => void;
+  onPreview: (file: StoredFile) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const category = categoryOf(file.name);
   const accent = CATEGORY_ACCENT[category];
+  const extension = extOf(file.name).toUpperCase() || 'FILE';
+  const previewUrl = `/api/file/${file.messageId}/preview`;
 
   async function handleDelete() {
     setDeleting(true);
@@ -32,8 +42,39 @@ export function FileCard({
   }
 
   return (
-    <div className="group relative bg-base-800/70 border border-base-700 rounded-xl p-4 hover:border-base-600 transition-colors">
-      <div className="flex items-start justify-between mb-3">
+    <div className="group relative overflow-hidden bg-base-800/70 border border-base-700 rounded-xl hover:border-base-600 transition-colors">
+      <button
+        type="button"
+        onClick={() => onPreview(file)}
+        className="block w-full text-left"
+        title={`Preview ${file.name}`}
+      >
+        <div className="aspect-[4/3] bg-base-900 border-b border-base-700/70 flex items-center justify-center overflow-hidden">
+          {category === 'image' ? (
+            <img
+              src={previewUrl}
+              alt={file.name}
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 px-4">
+              <div
+                className="w-14 h-14 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: `${accent}1A`, color: accent }}
+              >
+                <FileIcon category={category} className="w-7 h-7" />
+              </div>
+              <span className="max-w-full truncate rounded-md border border-base-700 bg-base-800 px-2 py-1 font-mono text-[11px] text-ink-400">
+                {extension}
+              </span>
+            </div>
+          )}
+        </div>
+      </button>
+
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-3">
         <div
           className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: `${accent}1A`, color: accent }}
@@ -62,14 +103,21 @@ export function FileCard({
             </svg>
           </button>
         </div>
-      </div>
+        </div>
 
-      <p className="text-sm font-medium text-ink-100 truncate" title={file.name}>
-        {file.name}
-      </p>
-      <p className="text-xs font-mono text-ink-500 mt-1">
-        {formatBytes(file.size)} · {formatDate(file.uploadedAt)}
-      </p>
+        <button
+          type="button"
+          onClick={() => onPreview(file)}
+          className="block w-full text-left"
+        >
+          <p className="text-sm font-medium text-ink-100 truncate" title={file.name}>
+            {file.name}
+          </p>
+          <p className="text-xs font-mono text-ink-500 mt-1">
+            {formatBytes(file.size)} - {formatDate(file.uploadedAt)}
+          </p>
+        </button>
+      </div>
 
       {confirmOpen && (
         <div className="absolute inset-0 bg-base-900/95 rounded-xl flex flex-col items-center justify-center gap-3 p-4 backdrop-blur-sm">
