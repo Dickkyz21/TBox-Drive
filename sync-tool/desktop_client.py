@@ -360,6 +360,16 @@ class TeleDriveApi:
         with self._request("GET", "/api/files", timeout=60) as res:
             return json.loads(res.read().decode("utf-8"))["files"]
 
+    def ensure_folder(self, folder_path: str) -> None:
+        payload = json.dumps({"path": folder_path}).encode("utf-8")
+        self._request(
+            "POST",
+            "/api/folders",
+            body=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=30,
+        ).close()
+
     def heartbeat(self, device_id: str) -> None:
         if not device_id:
             return
@@ -369,6 +379,7 @@ class TeleDriveApi:
         self._request("POST", f"/api/file/{message_id}/delete", timeout=30).close()
 
     def download(self, message_id: int, destination: Path) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
         with self._request("GET", f"/api/file/{message_id}/download", timeout=300) as res:
             tmp = destination.with_suffix(destination.suffix + ".tdtmp")
             try:
@@ -383,13 +394,21 @@ class TeleDriveApi:
                 tmp.unlink(missing_ok=True)
                 raise
 
-    def upload(self, path: Path) -> dict:
+    def upload(self, path: Path, folder_path: str = "") -> dict:
         boundary = f"----TeleDrive{uuid.uuid4().hex}"
         mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        folder_part = ""
+        if folder_path:
+            folder_part = (
+                f"--{boundary}\r\n"
+                'Content-Disposition: form-data; name="folderPath"\r\n\r\n'
+                f"{folder_path}\r\n"
+            )
         prefix = (
             f"--{boundary}\r\n"
             'Content-Disposition: form-data; name="filename"\r\n\r\n'
             f"{path.name}\r\n"
+            f"{folder_part}"
             f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="file"; filename="{path.name}"\r\n'
             f"Content-Type: {mime}\r\n\r\n"
@@ -430,6 +449,8 @@ class State:
 @dataclass
 class LocalFile:
     name: str
+    rel_path: str
+    folder_path: str
     size: int
     mtime: float
 
@@ -444,6 +465,7 @@ class SyncWorker(threading.Thread):
         self.api = TeleDriveApi(config["server_url"], config["api_key"])
         self.state = State(self.folder)
         self.snapshot: dict[str, LocalFile] = {}
+        self.synced_folders: set[str] = set()
 
     def emit(self, status: str, message: str) -> None:
         self.events.put({"status": status, "message": message})
@@ -452,12 +474,46 @@ class SyncWorker(threading.Thread):
     def scan_local(self) -> dict[str, LocalFile]:
         result: dict[str, LocalFile] = {}
         self.folder.mkdir(parents=True, exist_ok=True)
-        for path in self.folder.iterdir():
+        for path in self.folder.rglob("*"):
             if not path.is_file() or path.name == STATE_FILE or path.name.endswith(".tdtmp"):
                 continue
+            rel_path = path.relative_to(self.folder).as_posix()
+            folder_path = path.parent.relative_to(self.folder).as_posix()
+            if folder_path == ".":
+                folder_path = ""
             stat = path.stat()
-            result[path.name] = LocalFile(path.name, stat.st_size, stat.st_mtime)
+            result[rel_path] = LocalFile(path.name, rel_path, folder_path, stat.st_size, stat.st_mtime)
         return result
+
+    def scan_folders(self) -> list[str]:
+        self.folder.mkdir(parents=True, exist_ok=True)
+        folders: list[str] = []
+        for path in self.folder.rglob("*"):
+            if not path.is_dir():
+                continue
+            rel_path = path.relative_to(self.folder).as_posix()
+            if rel_path and rel_path != ".":
+                folders.append(rel_path)
+        return sorted(folders)
+
+    def sync_local_folders(self) -> None:
+        for folder_path in self.scan_folders():
+            if folder_path in self.synced_folders:
+                continue
+            self.api.ensure_folder(folder_path)
+            self.synced_folders.add(folder_path)
+
+    def remote_key(self, item: dict) -> str:
+        folder_path = str(item.get("folderPath") or "").strip().strip("/")
+        name = str(item.get("name") or "")
+        return f"{folder_path}/{name}" if folder_path else name
+
+    def safe_target(self, rel_path: str) -> Path:
+        parts = [
+            part for part in rel_path.replace("\\", "/").split("/")
+            if part and part not in (".", "..")
+        ]
+        return self.folder.joinpath(*parts)
 
     def wait_stable(self, path: Path) -> bool:
         previous = -1
@@ -477,21 +533,21 @@ class SyncWorker(threading.Thread):
         remote_by_id = {item["messageId"]: item for item in remote}
 
         for item in remote:
-            name = item["name"]
-            target = self.folder / name
+            key = self.remote_key(item)
+            target = self.safe_target(key)
             if target.exists() and target.stat().st_size == item["size"]:
-                self.state.set(name, item["messageId"])
+                self.state.set(key, item["messageId"])
                 continue
-            self.emit("syncing", f"Download {name}")
+            self.emit("syncing", f"Download {key}")
             self.api.download(item["messageId"], target)
-            self.state.set(name, item["messageId"])
+            self.state.set(key, item["messageId"])
 
-        for name, message_id in list(self.state.data.items()):
+        for rel_path, message_id in list(self.state.data.items()):
             if message_id not in remote_by_id:
-                local = self.folder / name
+                local = self.safe_target(rel_path)
                 if local.exists():
                     local.unlink()
-                self.state.remove(name)
+                self.state.remove(rel_path)
 
     def upload_changed(self, current: dict[str, LocalFile]) -> None:
         previous_names = set(self.snapshot)
@@ -504,16 +560,16 @@ class SyncWorker(threading.Thread):
                 self.api.delete(message_id)
                 self.state.remove(removed)
 
-        for name, local in current.items():
-            old = self.snapshot.get(name)
+        for rel_path, local in current.items():
+            old = self.snapshot.get(rel_path)
             if old and old.size == local.size and old.mtime == local.mtime:
                 continue
-            path = self.folder / name
+            path = self.safe_target(rel_path)
             if not self.wait_stable(path):
                 continue
-            self.emit("syncing", f"Upload {name} ({human_size(local.size)})")
-            uploaded = self.api.upload(path)
-            self.state.set(name, uploaded["messageId"])
+            self.emit("syncing", f"Upload {rel_path} ({human_size(local.size)})")
+            uploaded = self.api.upload(path, local.folder_path)
+            self.state.set(rel_path, uploaded["messageId"])
 
     def run(self) -> None:
         try:
@@ -523,11 +579,13 @@ class SyncWorker(threading.Thread):
             self.config["device_name"] = device["name"]
             save_config(self.config)
             self.emit("online", f"Connected: {device['name']}")
+            self.sync_local_folders()
             self.sync_remote()
             self.snapshot = self.scan_local()
 
             while not self.stop_event.wait(self.config.get("interval", DEFAULT_INTERVAL)):
                 self.api.heartbeat(self.config.get("device_id", ""))
+                self.sync_local_folders()
                 current = self.scan_local()
                 self.upload_changed(current)
                 self.sync_remote()

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addFolder, addLog, isStoreConfigured, listFolders } from '@/lib/store';
+import {
+  addFolder,
+  addLog,
+  ensureFolderByPath,
+  isStoreConfigured,
+  listFolders,
+} from '@/lib/store';
 import { isConfigured } from '@/lib/telegram';
 
 export async function GET() {
@@ -36,9 +42,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { name } = await req.json();
-    const folder = await addFolder(String(name ?? 'Folder Baru'));
-    await addLog('create_folder', folder.name);
+    const { name, path } = await req.json();
+    const folder = path
+      ? await ensureFolderByPath(String(path))
+      : await addFolder(String(name ?? 'Folder Baru'));
+    if (!path) await addLog('create_folder', folder.name);
     return NextResponse.json({ folder });
   } catch (err: any) {
     return NextResponse.json(

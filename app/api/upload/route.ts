@@ -1,7 +1,13 @@
 // app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadFile, isConfigured } from '@/lib/telegram';
-import { addToIndex, addLog, isStoreConfigured, listFolders } from '@/lib/store';
+import {
+  addToIndex,
+  addLog,
+  ensureFolderByPath,
+  isStoreConfigured,
+  listFolders,
+} from '@/lib/store';
 import { formatBytes, mimeFromFilename } from '@/lib/format';
 
 export const runtime = 'nodejs';
@@ -38,9 +44,14 @@ export async function POST(req: NextRequest) {
     const form = await req.formData();
     const file = form.get('file');
     const folderIdValue = form.get('folderId');
-    const folderId =
+    const folderPathValue = form.get('folderPath');
+    let folderId =
       typeof folderIdValue === 'string' && folderIdValue.trim()
         ? folderIdValue.trim()
+        : null;
+    const folderPath =
+      typeof folderPathValue === 'string' && folderPathValue.trim()
+        ? folderPathValue.trim()
         : null;
 
     if (!file || !(file instanceof Blob)) {
@@ -63,6 +74,11 @@ export async function POST(req: NextRequest) {
       'file-tanpa-nama'
     );
 
+    if (!folderId && folderPath) {
+      const folder = await ensureFolderByPath(folderPath);
+      folderId = folder.id;
+    }
+
     if (folderId) {
       const folders = await listFolders();
       if (!folders.some((folder) => folder.id === folderId)) {
@@ -74,7 +90,7 @@ export async function POST(req: NextRequest) {
     }
 
     const mime = mimeFromFilename(filename, file.type || 'application/octet-stream');
-    const stored = await uploadFile(file, filename, mime, folderId);
+    const stored = await uploadFile(file, filename, mime, folderId, folderPath);
     await addToIndex(stored);
     await addLog('upload', stored.name, formatBytes(stored.size));
 

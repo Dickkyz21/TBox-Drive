@@ -59,6 +59,7 @@ async function zrangeAll(key: string): Promise<unknown[]> {
 export type StoredFolder = {
   id: string;
   name: string;
+  path?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -112,6 +113,15 @@ function normalizeFolderName(name: string): string {
   return cleaned.slice(0, 80) || 'Folder Baru';
 }
 
+function normalizeFolderPath(value: string): string {
+  return value
+    .replace(/\\/g, '/')
+    .split('/')
+    .map((part) => normalizeFolderName(part))
+    .filter(Boolean)
+    .join('/');
+}
+
 async function listFoldersRaw(): Promise<{ folder: StoredFolder; raw: string }[]> {
   const items = await getRedis().zrange(FOLDERS_KEY, 0, -1);
   return (items as unknown[])
@@ -139,6 +149,28 @@ export async function addFolder(name: string): Promise<StoredFolder> {
   const folder: StoredFolder = {
     id: newId(),
     name: folderName,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await getRedis().zadd(FOLDERS_KEY, {
+    score: new Date(folder.createdAt).getTime(),
+    member: JSON.stringify(folder),
+  });
+  return folder;
+}
+
+export async function ensureFolderByPath(pathValue: string): Promise<StoredFolder> {
+  const folderPath = normalizeFolderPath(pathValue);
+  const name = folderPath.split('/').pop() || folderPath || 'Folder Baru';
+  const all = await listFoldersRaw();
+  const existing = all.find((item) => item.folder.path === folderPath);
+  if (existing) return existing.folder;
+
+  const now = new Date().toISOString();
+  const folder: StoredFolder = {
+    id: newId(),
+    name: normalizeFolderName(name),
+    path: folderPath,
     createdAt: now,
     updatedAt: now,
   };

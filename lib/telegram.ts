@@ -29,6 +29,7 @@ export type StoredFile = {
   uploadedAt: string;
   fileId: string;
   folderId?: string | null;
+  folderPath?: string | null;
 };
 
 type FileMeta = {
@@ -37,6 +38,7 @@ type FileMeta = {
   m: string; // mime type
   t: string; // ISO timestamp
   f?: string | null; // folder id
+  p?: string | null; // folder path
 };
 
 export type StoredNote = {
@@ -95,7 +97,8 @@ async function readTelegramJson(res: Response, fallback: string): Promise<any> {
 // ---------- FILE ----------
 
 function encodeFileCaption(meta: FileMeta): string {
-  return `📄 ${meta.n}\nTDF|${JSON.stringify(meta)}`;
+  const folderLine = meta.p ? `\n📁 ${meta.p}` : '';
+  return `📄 ${meta.n}${folderLine}\n\nTDF|${JSON.stringify(meta)}`;
 }
 
 function decodeFileCaption(caption: string | undefined): FileMeta | null {
@@ -118,7 +121,8 @@ export async function uploadFile(
   file: Blob,
   filename: string,
   mime: string,
-  folderId?: string | null
+  folderId?: string | null,
+  folderPath?: string | null
 ): Promise<StoredFile> {
   const config = await assertConfigured();
 
@@ -128,11 +132,26 @@ export async function uploadFile(
     m: mime || 'application/octet-stream',
     t: new Date().toISOString(),
     f: folderId || null,
+    p: folderPath || null,
   };
 
+  const caption = encodeFileCaption(meta);
+  const marker = caption.indexOf('TDF|');
   const form = new FormData();
   form.append('chat_id', config.chatId);
-  form.append('caption', encodeFileCaption(meta));
+  form.append('caption', caption);
+  if (marker >= 0) {
+    form.append(
+      'caption_entities',
+      JSON.stringify([
+        {
+          type: 'spoiler',
+          offset: marker,
+          length: caption.length - marker,
+        },
+      ])
+    );
+  }
   form.append('document', file, filename);
 
   const res = await fetch(`${API_BASE(config.botToken)}/sendDocument`, {
@@ -151,6 +170,7 @@ export async function uploadFile(
     uploadedAt: meta.t,
     fileId: doc.file_id,
     folderId: meta.f,
+    folderPath: meta.p,
   };
 }
 
@@ -330,6 +350,7 @@ export async function pullPendingUpdates(): Promise<PulledData> {
             uploadedAt: meta.t,
             fileId: msg.document.file_id,
             folderId: meta.f,
+            folderPath: meta.p,
           });
         } else {
           files.push({
@@ -342,6 +363,7 @@ export async function pullPendingUpdates(): Promise<PulledData> {
               : new Date().toISOString(),
             fileId: msg.document.file_id,
             folderId: null,
+            folderPath: null,
           });
         }
       } else if (msg.text) {

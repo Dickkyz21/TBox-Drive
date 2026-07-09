@@ -230,6 +230,7 @@ function FolderCard({
   const [name, setName] = useState(folder.name);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const displayName = folder.path || folder.name;
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -286,8 +287,8 @@ function FolderCard({
       <div className="p-4">
         <div className="mb-3 flex items-start justify-between gap-3">
           <button type="button" onClick={() => onOpen(folder.id)} className="min-w-0 text-left">
-            <p className="truncate text-sm font-semibold text-ink-100" title={folder.name}>
-              {folder.name}
+            <p className="truncate text-sm font-semibold text-ink-100" title={displayName}>
+              {displayName}
             </p>
             <p className="mt-1 text-xs font-mono text-ink-500">{fileCount} file</p>
           </button>
@@ -701,8 +702,8 @@ export function FileGrid({
                     <FolderIcon className="h-5 w-5" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-ink-100">
-                      {item.folder.name}
+                    <span className="block truncate text-sm font-medium text-ink-100" title={item.folder.path || item.folder.name}>
+                      {item.folder.path || item.folder.name}
                     </span>
                     <span className="mt-0.5 block text-xs font-mono text-ink-500">
                       {item.fileCount} file
