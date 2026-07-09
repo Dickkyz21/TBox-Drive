@@ -25,11 +25,18 @@ export async function GET() {
   }
 
   try {
-    const pulled = await pullPendingUpdates();
-    const addedFiles = await addManyFilesToIndex(pulled.files);
-    const addedNotes = await addManyNotesToIndex(pulled.notes);
-    if (addedFiles > 0 || addedNotes > 0) {
-      await addLog('sync', `${addedFiles} file, ${addedNotes} note dari Telegram`);
+    try {
+      const pulled = await pullPendingUpdates();
+      const addedFiles = await addManyFilesToIndex(pulled.files);
+      const addedNotes = await addManyNotesToIndex(pulled.notes);
+      if (addedFiles > 0 || addedNotes > 0) {
+        await addLog('sync', `${addedFiles} file, ${addedNotes} note dari Telegram`);
+      }
+    } catch (syncErr: any) {
+      const message = syncErr?.message || '';
+      if (!message.toLowerCase().includes('conflict')) {
+        console.error('Gagal sync pending Telegram:', message);
+      }
     }
 
     const folders = await listFolders();

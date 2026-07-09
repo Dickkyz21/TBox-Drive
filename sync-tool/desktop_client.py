@@ -627,7 +627,11 @@ class SyncWorker(threading.Thread):
         return path.exists()
 
     def sync_remote(self) -> None:
-        remote = self.api.list_files()
+        try:
+            remote = self.api.list_files()
+        except Exception as exc:
+            self.emit("error", f"Sync server tertunda: {exc}")
+            return
         remote_by_id = {item["messageId"]: item for item in remote}
 
         for item in remote:
@@ -669,8 +673,11 @@ class SyncWorker(threading.Thread):
             if not self.wait_stable(path):
                 continue
             self.emit("syncing", f"Upload {rel_path} ({human_size(local.size)})")
-            uploaded = self.api.upload(path, local.folder_path)
-            self.state.set(rel_path, uploaded["messageId"])
+            try:
+                uploaded = self.api.upload(path, local.folder_path)
+                self.state.set(rel_path, uploaded["messageId"])
+            except Exception as exc:
+                self.emit("error", f"Gagal upload {rel_path}: {exc}")
 
     def run(self) -> None:
         try:
@@ -685,13 +692,16 @@ class SyncWorker(threading.Thread):
             self.snapshot = self.scan_local()
 
             while not self.stop_event.wait(self.config.get("interval", DEFAULT_INTERVAL)):
-                self.api.heartbeat(self.config.get("device_id", ""))
-                self.sync_local_folders()
-                current = self.scan_local()
-                self.upload_changed(current)
-                self.sync_remote()
-                self.snapshot = self.scan_local()
-                self.emit("online", "Synced")
+                try:
+                    self.api.heartbeat(self.config.get("device_id", ""))
+                    self.sync_local_folders()
+                    current = self.scan_local()
+                    self.upload_changed(current)
+                    self.sync_remote()
+                    self.snapshot = self.scan_local()
+                    self.emit("online", "Synced")
+                except Exception as exc:
+                    self.emit("error", f"Sync tertunda: {exc}")
         except Exception as exc:
             self.emit("error", str(exc))
 
