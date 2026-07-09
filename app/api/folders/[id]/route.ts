@@ -29,8 +29,9 @@ export async function PATCH(
     if (!folder) {
       return NextResponse.json({ error: 'Folder tidak ditemukan.' }, { status: 404 });
     }
+    const folders = await listFolders();
     await addLog('rename_folder', folder.name);
-    return NextResponse.json({ folder });
+    return NextResponse.json({ folder, folders });
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Gagal mengganti nama folder.' },
@@ -57,9 +58,18 @@ export async function DELETE(
     if (!targetFolder) {
       return NextResponse.json({ error: 'Folder tidak ditemukan.' }, { status: 404 });
     }
+    const targetPath = targetFolder.path || null;
+    const folderIds = new Set(
+      folders
+        .filter((folder) =>
+          folder.id === id ||
+          Boolean(targetPath && folder.path?.startsWith(`${targetPath}/`))
+        )
+        .map((folder) => folder.id)
+    );
 
     const files = await listIndex();
-    const folderFiles = files.filter((file) => file.folderId === id);
+    const folderFiles = files.filter((file) => file.folderId && folderIds.has(file.folderId));
 
     await Promise.all(
       folderFiles.map(async (file) => {
@@ -73,10 +83,19 @@ export async function DELETE(
       })
     );
 
+    await Promise.all(
+      [...folderIds]
+        .filter((folderId) => folderId !== id)
+        .map((folderId) => removeFolder(folderId))
+    );
     const folder = await removeFolder(id);
 
     await addLog('delete_folder', folder?.name ?? targetFolder.name, `${folderFiles.length} file`);
-    return NextResponse.json({ ok: true, deletedFileIds: folderFiles.map((file) => file.messageId) });
+    return NextResponse.json({
+      ok: true,
+      deletedFileIds: folderFiles.map((file) => file.messageId),
+      deletedFolderIds: [...folderIds],
+    });
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Gagal menghapus folder.' },

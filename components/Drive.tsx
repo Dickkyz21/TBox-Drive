@@ -28,10 +28,11 @@ export function Drive({
     setFiles((prev) => prev.filter((f) => f.messageId !== messageId));
   }
 
-  function handleFolderDeleted(id: string, deletedFileIds: number[]) {
-    setFolders((prev) => prev.filter((folder) => folder.id !== id));
+  function handleFolderDeleted(id: string, deletedFileIds: number[], deletedFolderIds?: string[]) {
+    const ids = new Set(deletedFolderIds?.length ? deletedFolderIds : [id]);
+    setFolders((prev) => prev.filter((folder) => !ids.has(folder.id)));
     setFiles((prev) => prev.filter((file) => !deletedFileIds.includes(file.messageId)));
-    if (currentFolderId === id) setCurrentFolderId(null);
+    if (currentFolderId && ids.has(currentFolderId)) setCurrentFolderId(null);
   }
 
   return (
@@ -41,7 +42,7 @@ export function Drive({
         <Dropzone
           onUploaded={handleUploaded}
           folderId={currentFolderId}
-          folderName={currentFolder?.name}
+          folderName={currentFolder?.path || currentFolder?.name}
         />
         <FileGrid
           files={files}
@@ -49,8 +50,10 @@ export function Drive({
           currentFolderId={currentFolderId}
           onFolderOpen={setCurrentFolderId}
           onFolderAdded={(folder) => setFolders((prev) => [folder, ...prev])}
-          onFolderRenamed={(folder) =>
-            setFolders((prev) => prev.map((item) => (item.id === folder.id ? folder : item)))
+          onFolderRenamed={(folder, nextFolders) =>
+            nextFolders
+              ? setFolders(nextFolders)
+              : setFolders((prev) => prev.map((item) => (item.id === folder.id ? folder : item)))
           }
           onFolderDeleted={handleFolderDeleted}
           onDeleted={handleDeleted}

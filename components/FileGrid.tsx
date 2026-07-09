@@ -22,6 +22,24 @@ type ContentItem =
   | { kind: 'folder'; folder: StoredFolder; fileCount: number }
   | { kind: 'file'; file: StoredFile };
 
+function folderPath(folder: StoredFolder | null): string {
+  return folder?.path || folder?.name || '';
+}
+
+function parentPath(path: string): string {
+  const parts = path.split('/').filter(Boolean);
+  parts.pop();
+  return parts.join('/');
+}
+
+function childName(path: string): string {
+  return path.split('/').filter(Boolean).pop() || path;
+}
+
+function joinPath(parent: string, name: string): string {
+  return [...parent.split('/').filter(Boolean), name.trim()].filter(Boolean).join('/');
+}
+
 function isPreviewable(file: StoredFile): boolean {
   const category = categoryOf(file.name);
   const ext = extOf(file.name);
@@ -39,9 +57,15 @@ function FolderIcon({ className = 'h-7 w-7' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
       <path
-        d="M3.5 7.5A2.5 2.5 0 0 1 6 5h4.2c.7 0 1.36.33 1.78.9l.82 1.1H18a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 18 19H6a2.5 2.5 0 0 1-2.5-2.5v-9Z"
+        d="M3.5 8.25A2.25 2.25 0 0 1 5.75 6h4.02c.55 0 1.08.2 1.49.57l1.1.98c.28.25.64.39 1.02.39h4.87A2.25 2.25 0 0 1 20.5 10.2v5.55A2.25 2.25 0 0 1 18.25 18H5.75a2.25 2.25 0 0 1-2.25-2.25v-7.5Z"
+        fill="currentColor"
+        opacity="0.16"
+      />
+      <path
+        d="M3.5 8.25A2.25 2.25 0 0 1 5.75 6h4.02c.55 0 1.08.2 1.49.57l1.1.98c.28.25.64.39 1.02.39h4.87A2.25 2.25 0 0 1 20.5 10.2v5.55A2.25 2.25 0 0 1 18.25 18H5.75a2.25 2.25 0 0 1-2.25-2.25v-7.5Z"
         stroke="currentColor"
         strokeWidth="1.7"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
@@ -223,14 +247,15 @@ function FolderCard({
   folder: StoredFolder;
   fileCount: number;
   onOpen: (id: string) => void;
-  onRenamed: (folder: StoredFolder) => void;
-  onDeleted: (id: string, deletedFileIds: number[]) => void;
+  onRenamed: (folder: StoredFolder, folders?: StoredFolder[]) => void;
+  onDeleted: (id: string, deletedFileIds: number[], deletedFolderIds?: string[]) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(folder.name);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const displayName = folder.path || folder.name;
+  const displayPath = folderPath(folder);
+  const displayName = childName(displayPath || folder.name);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -256,7 +281,7 @@ function FolderCard({
       setError(data.error || 'Gagal mengganti nama folder.');
       return;
     }
-    onRenamed(data.folder);
+    onRenamed(data.folder, data.folders);
     setEditing(false);
   }
 
@@ -265,7 +290,7 @@ function FolderCard({
     const res = await fetch(`/api/folders/${folder.id}`, { method: 'DELETE' });
     const data = await res.json();
     if (res.ok) {
-      onDeleted(folder.id, data.deletedFileIds || []);
+      onDeleted(folder.id, data.deletedFileIds || [], data.deletedFolderIds || [folder.id]);
     } else {
       setError(data.error || 'Gagal menghapus folder.');
       setDeleting(false);
@@ -273,14 +298,14 @@ function FolderCard({
   }
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-base-700 bg-base-800/70 transition-colors hover:border-base-600">
+    <div className="group relative overflow-hidden rounded-xl border border-base-700 bg-base-800/70 transition-colors hover:border-warn-400/40">
       <button
         type="button"
         onClick={() => onOpen(folder.id)}
-        className="block w-full border-b border-base-700/70 bg-base-900 px-5 py-8 text-left"
+        className="block w-full border-b border-base-700/70 bg-base-900 px-5 py-7 text-left"
       >
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-warn-400/12 text-warn-400">
-          <FolderIcon className="h-9 w-9" />
+        <div className="mx-auto flex h-16 w-20 items-center justify-center rounded-lg border border-warn-400/20 bg-warn-400/10 text-warn-400">
+          <FolderIcon className="h-11 w-11" />
         </div>
       </button>
 
@@ -290,7 +315,9 @@ function FolderCard({
             <p className="truncate text-sm font-semibold text-ink-100" title={displayName}>
               {displayName}
             </p>
-            <p className="mt-1 text-xs font-mono text-ink-500">{fileCount} file</p>
+            <p className="mt-1 truncate text-xs font-mono text-ink-500" title={displayPath || displayName}>
+              {fileCount} file{displayPath ? ` - ${displayPath}` : ''}
+            </p>
           </button>
           <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
             <button
@@ -376,16 +403,19 @@ function CreateFolderModal({
   open,
   onClose,
   onCreated,
+  parentFolder,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (folder: StoredFolder) => void;
+  parentFolder: StoredFolder | null;
 }) {
   const [name, setName] = useState('Folder Baru');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
+  const parent = folderPath(parentFolder);
 
   async function handleCreate() {
     setSaving(true);
@@ -393,7 +423,7 @@ function CreateFolderModal({
     const res = await fetch('/api/folders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ path: joinPath(parent, name) }),
     });
     const data = await res.json();
     setSaving(false);
@@ -417,7 +447,9 @@ function CreateFolderModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div className="w-full max-w-md rounded-xl border border-base-700 bg-base-800 p-5 shadow-2xl">
           <h3 className="text-sm font-semibold text-ink-100">Folder Baru</h3>
-          <p className="mt-1 text-xs text-ink-500">Folder dibuat di halaman File dan bisa langsung diisi upload.</p>
+          <p className="mt-1 text-xs text-ink-500">
+            Folder dibuat di {parent ? `/${parent}` : 'Root'} dan bisa langsung diisi upload.
+          </p>
           <input
             autoFocus
             value={name}
@@ -462,8 +494,8 @@ export function FileGrid({
   currentFolderId: string | null;
   onFolderOpen: (id: string | null) => void;
   onFolderAdded: (folder: StoredFolder) => void;
-  onFolderRenamed: (folder: StoredFolder) => void;
-  onFolderDeleted: (id: string, deletedFileIds: number[]) => void;
+  onFolderRenamed: (folder: StoredFolder, folders?: StoredFolder[]) => void;
+  onFolderDeleted: (id: string, deletedFileIds: number[], deletedFolderIds?: string[]) => void;
   onDeleted: (messageId: number) => void;
 }) {
   const [query, setQuery] = useState('');
@@ -474,6 +506,7 @@ export function FileGrid({
   const [pageSize, setPageSize] = useState(10);
   const [createOpen, setCreateOpen] = useState(false);
   const currentFolder = folders.find((folder) => folder.id === currentFolderId) ?? null;
+  const currentPath = folderPath(currentFolder);
   const knownFolderIds = useMemo(
     () => new Set(folders.map((folder) => folder.id)),
     [folders]
@@ -496,6 +529,16 @@ export function FileGrid({
     return counts;
   }, [files, knownFolderIds]);
 
+  const childFolderCount = useMemo(
+    () =>
+      folders.filter((folder) =>
+        currentFolderId
+          ? parentPath(folderPath(folder)) === currentPath
+          : parentPath(folderPath(folder)) === ''
+      ).length,
+    [currentFolderId, currentPath, folders]
+  );
+
   const filtered = useMemo<ContentItem[]>(() => {
     const sortedFiles = [...filesInCurrentFolder].sort((a, b) => {
       if (sort === 'name') return a.name.localeCompare(b.name);
@@ -504,9 +547,12 @@ export function FileGrid({
       return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
     });
 
-    const rootFolders: ContentItem[] = currentFolderId
-      ? []
-      : [...folders]
+    const childFolders: ContentItem[] = [...folders]
+      .filter((folder) =>
+        currentFolderId
+          ? parentPath(folderPath(folder)) === currentPath
+          : parentPath(folderPath(folder)) === ''
+      )
           .sort((a, b) => a.name.localeCompare(b.name))
           .map((folder) => ({
             kind: 'folder',
@@ -514,7 +560,7 @@ export function FileGrid({
             fileCount: folderCounts.get(folder.id) ?? 0,
           }));
     const items: ContentItem[] = [
-      ...rootFolders,
+      ...childFolders,
       ...sortedFiles.map((file) => ({ kind: 'file', file }) as ContentItem),
     ];
 
@@ -522,10 +568,10 @@ export function FileGrid({
     const q = query.toLowerCase();
     return items.filter((item) =>
       item.kind === 'folder'
-        ? item.folder.name.toLowerCase().includes(q)
+        ? `${item.folder.name} ${item.folder.path || ''}`.toLowerCase().includes(q)
         : item.file.name.toLowerCase().includes(q)
     );
-  }, [currentFolderId, filesInCurrentFolder, folderCounts, folders, query, sort]);
+  }, [currentFolderId, currentPath, filesInCurrentFolder, folderCounts, folders, query, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -568,21 +614,19 @@ export function FileGrid({
             <>
               <span className="text-ink-500">/</span>
               <span className="truncate rounded-lg bg-tg-500/10 px-3 py-2 font-medium text-tg-500">
-                {currentFolder.name}
+                {folderPath(currentFolder)}
               </span>
             </>
           )}
         </div>
-        {!currentFolderId && (
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-tg-500/40 px-4 py-2 text-sm font-medium text-tg-500 hover:bg-tg-500/10"
-          >
-            <FolderIcon className="h-4 w-4" />
-            Folder Baru
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-tg-500/40 px-4 py-2 text-sm font-medium text-tg-500 hover:bg-tg-500/10"
+        >
+          <FolderIcon className="h-4 w-4" />
+          Folder Baru
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -599,9 +643,9 @@ export function FileGrid({
           <p className="mt-1 text-xl font-semibold text-ink-100">{summary.images}</p>
         </div>
         <div className="rounded-lg border border-base-700 bg-base-800/50 px-4 py-3">
-          <p className="text-xs text-ink-500">{currentFolder ? 'Dokumen' : 'Folder'}</p>
+          <p className="text-xs text-ink-500">Folder</p>
           <p className="mt-1 text-xl font-semibold text-ink-100">
-            {currentFolder ? summary.documents : folders.length}
+            {childFolderCount}
           </p>
         </div>
       </div>
@@ -703,10 +747,10 @@ export function FileGrid({
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-ink-100" title={item.folder.path || item.folder.name}>
-                      {item.folder.path || item.folder.name}
+                      {childName(folderPath(item.folder) || item.folder.name)}
                     </span>
                     <span className="mt-0.5 block text-xs font-mono text-ink-500">
-                      {item.fileCount} file
+                      {item.fileCount} file{item.folder.path ? ` - ${item.folder.path}` : ''}
                     </span>
                   </span>
                   <span className="hidden text-xs font-mono text-ink-500 sm:block">
@@ -770,6 +814,7 @@ export function FileGrid({
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={onFolderAdded}
+        parentFolder={currentFolder}
       />
       <FilePreviewPanel file={preview} onClose={() => setPreview(null)} />
     </div>

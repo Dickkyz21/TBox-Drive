@@ -163,7 +163,11 @@ export async function ensureFolderByPath(pathValue: string): Promise<StoredFolde
   const folderPath = normalizeFolderPath(pathValue);
   const name = folderPath.split('/').pop() || folderPath || 'Folder Baru';
   const all = await listFoldersRaw();
-  const existing = all.find((item) => item.folder.path === folderPath);
+  const existing = all.find(
+    (item) =>
+      item.folder.path === folderPath ||
+      (!item.folder.path && !folderPath.includes('/') && item.folder.name === folderPath)
+  );
   if (existing) return existing.folder;
 
   const now = new Date().toISOString();
@@ -188,10 +192,16 @@ export async function updateFolder(
   const all = await listFoldersRaw();
   const found = all.find((item) => item.folder.id === id);
   if (!found) return null;
+  const oldPath = found.folder.path || null;
+  const nextName = patch.name ? normalizeFolderName(patch.name) : found.folder.name;
+  const nextPath = oldPath
+    ? [...oldPath.split('/').slice(0, -1), nextName].filter(Boolean).join('/')
+    : found.folder.path;
   const updated: StoredFolder = {
     ...found.folder,
     ...patch,
-    name: patch.name ? normalizeFolderName(patch.name) : found.folder.name,
+    name: nextName,
+    path: nextPath,
     updatedAt: new Date().toISOString(),
   };
   const client = getRedis();
@@ -200,6 +210,24 @@ export async function updateFolder(
     score: new Date(found.folder.createdAt).getTime(),
     member: JSON.stringify(updated),
   });
+  if (oldPath && nextPath && oldPath !== nextPath) {
+    await Promise.all(
+      all
+        .filter((item) => item.folder.path?.startsWith(`${oldPath}/`))
+        .map(async (item) => {
+          const child: StoredFolder = {
+            ...item.folder,
+            path: `${nextPath}/${item.folder.path!.slice(oldPath.length + 1)}`,
+            updatedAt: new Date().toISOString(),
+          };
+          await client.zrem(FOLDERS_KEY, item.raw);
+          await client.zadd(FOLDERS_KEY, {
+            score: new Date(item.folder.createdAt).getTime(),
+            member: JSON.stringify(child),
+          });
+        })
+    );
+  }
   return updated;
 }
 

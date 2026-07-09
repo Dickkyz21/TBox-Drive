@@ -5,6 +5,7 @@ import {
   addManyFilesToIndex,
   addManyNotesToIndex,
   isStoreConfigured,
+  listFolders,
   listIndex,
 } from '@/lib/store';
 import { isConfigured, pullPendingUpdates } from '@/lib/telegram';
@@ -31,7 +32,12 @@ export async function GET() {
       await addLog('sync', `${addedFiles} file, ${addedNotes} note dari Telegram`);
     }
 
-    const files = await listIndex();
+    const folders = await listFolders();
+    const folderPaths = new Map(folders.map((folder) => [folder.id, folder.path || folder.name]));
+    const files = (await listIndex()).map((file) => ({
+      ...file,
+      folderPath: file.folderId ? folderPaths.get(file.folderId) || file.folderPath || null : null,
+    }));
     return NextResponse.json({ files });
   } catch (err: any) {
     return NextResponse.json(
