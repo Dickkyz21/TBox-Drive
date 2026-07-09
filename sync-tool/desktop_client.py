@@ -20,6 +20,7 @@ import mimetypes
 import os
 import platform
 import queue
+import shutil
 import subprocess
 import sys
 import threading
@@ -63,7 +64,8 @@ except Exception as exc:
 
 APP_NAME = "TeleDrive Desktop"
 STATE_FILE = ".teledrive-state.json"
-DEFAULT_INTERVAL = 5
+FOLDER_STATE_FILE = ".teledrive-folders.json"
+DEFAULT_INTERVAL = 3
 DEFAULT_SERVER_URL = os.environ.get("TELEDRIVE_SERVER_URL", "").strip()
 
 def runtime_info() -> str:
@@ -360,15 +362,23 @@ class TeleDriveApi:
         with self._request("GET", "/api/files", timeout=60) as res:
             return json.loads(res.read().decode("utf-8"))["files"]
 
-    def ensure_folder(self, folder_path: str) -> None:
+    def list_folders(self) -> list[dict]:
+        with self._request("GET", "/api/folders", timeout=30) as res:
+            return json.loads(res.read().decode("utf-8"))["folders"]
+
+    def ensure_folder(self, folder_path: str) -> dict:
         payload = json.dumps({"path": folder_path}).encode("utf-8")
-        self._request(
+        with self._request(
             "POST",
             "/api/folders",
             body=payload,
             headers={"Content-Type": "application/json"},
             timeout=30,
-        ).close()
+        ) as res:
+            return json.loads(res.read().decode("utf-8"))["folder"]
+
+    def delete_folder(self, folder_id: str) -> None:
+        self._request("DELETE", f"/api/folders/{folder_id}", timeout=60).close()
 
     def heartbeat(self, device_id: str) -> None:
         if not device_id:
@@ -445,6 +455,27 @@ class State:
             del self.data[name]
             self.save()
 
+class FolderState:
+    def __init__(self, folder: Path):
+        self.path = folder / FOLDER_STATE_FILE
+        self.data: dict[str, str] = {}
+        self.load()
+
+    def load(self) -> None:
+        if self.path.exists():
+            try:
+                loaded = json.loads(self.path.read_text(encoding="utf-8"))
+                self.data = {str(k): str(v) for k, v in loaded.items()}
+            except Exception:
+                self.data = {}
+
+    def save(self) -> None:
+        self.path.write_text(json.dumps(self.data, indent=2), encoding="utf-8")
+
+    def set_all(self, data: dict[str, str]) -> None:
+        self.data = dict(data)
+        self.save()
+
 
 @dataclass
 class LocalFile:
@@ -464,6 +495,7 @@ class SyncWorker(threading.Thread):
         self.folder = Path(config["folder"]).expanduser().resolve()
         self.api = TeleDriveApi(config["server_url"], config["api_key"])
         self.state = State(self.folder)
+        self.folder_state = FolderState(self.folder)
         self.snapshot: dict[str, LocalFile] = {}
         self.synced_folders: set[str] = set()
 
@@ -475,7 +507,7 @@ class SyncWorker(threading.Thread):
         result: dict[str, LocalFile] = {}
         self.folder.mkdir(parents=True, exist_ok=True)
         for path in self.folder.rglob("*"):
-            if not path.is_file() or path.name == STATE_FILE or path.name.endswith(".tdtmp"):
+            if not path.is_file() or path.name in (STATE_FILE, FOLDER_STATE_FILE) or path.name.endswith(".tdtmp"):
                 continue
             rel_path = path.relative_to(self.folder).as_posix()
             folder_path = path.parent.relative_to(self.folder).as_posix()
@@ -497,11 +529,72 @@ class SyncWorker(threading.Thread):
         return sorted(folders)
 
     def sync_local_folders(self) -> None:
-        for folder_path in self.scan_folders():
-            if folder_path in self.synced_folders:
+        local_paths = set(self.scan_folders())
+        remote = self.api.list_folders()
+        remote_by_id = {
+            str(folder["id"]): str(folder.get("path") or folder.get("name") or "").strip("/")
+            for folder in remote
+            if folder.get("id") and (folder.get("path") or folder.get("name"))
+        }
+        remote_paths = set(remote_by_id.values())
+
+        for folder_id, old_path in list(self.folder_state.data.items()):
+            new_path = remote_by_id.get(folder_id)
+            if new_path and new_path != old_path:
+                old_target = self.safe_target(old_path)
+                new_target = self.safe_target(new_path)
+                if old_target.exists() and not new_target.exists():
+                    new_target.parent.mkdir(parents=True, exist_ok=True)
+                    old_target.rename(new_target)
+                elif new_target.exists():
+                    self.remove_local_folder(old_path)
+                self.emit("syncing", f"Rename folder {old_path} -> {new_path}")
+            elif not new_path:
+                self.remove_local_folder(old_path)
+                self.emit("syncing", f"Hapus folder lokal {old_path}")
+
+        for folder_id, folder_path in list(remote_by_id.items()):
+            if self.folder_state.data.get(folder_id) == folder_path and folder_path not in local_paths:
+                try:
+                    self.api.delete_folder(folder_id)
+                    remote_by_id.pop(folder_id, None)
+                    remote_paths.discard(folder_path)
+                    self.emit("syncing", f"Hapus folder server {folder_path}")
+                except Exception as exc:
+                    log(f"Gagal hapus folder server {folder_path}: {exc}")
+
+        local_paths = set(self.scan_folders())
+
+        for folder_id, folder_path in remote_by_id.items():
+            self.safe_target(folder_path).mkdir(parents=True, exist_ok=True)
+
+        local_paths = set(self.scan_folders())
+
+        for folder_path in sorted(local_paths - remote_paths):
+            folder = self.api.ensure_folder(folder_path)
+            folder_id = str(folder.get("id", ""))
+            if folder_id:
+                remote_by_id[folder_id] = str(folder.get("path") or folder.get("name") or folder_path).strip("/")
+                remote_paths.add(remote_by_id[folder_id])
+
+        for folder_id, folder_path in list(self.folder_state.data.items()):
+            if folder_id in remote_by_id:
                 continue
-            self.api.ensure_folder(folder_path)
-            self.synced_folders.add(folder_path)
+            if folder_path in local_paths:
+                continue
+            try:
+                self.api.delete_folder(folder_id)
+                self.emit("syncing", f"Hapus folder server {folder_path}")
+            except Exception as exc:
+                log(f"Gagal hapus folder server {folder_path}: {exc}")
+
+        latest_remote = self.api.list_folders()
+        self.folder_state.set_all({
+            str(folder["id"]): str(folder.get("path") or folder.get("name") or "").strip("/")
+            for folder in latest_remote
+            if folder.get("id") and (folder.get("path") or folder.get("name"))
+        })
+        self.synced_folders = set(self.folder_state.data.values())
 
     def remote_key(self, item: dict) -> str:
         folder_path = str(item.get("folderPath") or "").strip().strip("/")
@@ -514,6 +607,11 @@ class SyncWorker(threading.Thread):
             if part and part not in (".", "..")
         ]
         return self.folder.joinpath(*parts)
+
+    def remove_local_folder(self, rel_path: str) -> None:
+        target = self.safe_target(rel_path)
+        if target.exists() and target.is_dir():
+            shutil.rmtree(target)
 
     def wait_stable(self, path: Path) -> bool:
         previous = -1
@@ -557,7 +655,10 @@ class SyncWorker(threading.Thread):
             message_id = self.state.data.get(removed)
             if message_id:
                 self.emit("syncing", f"Hapus cloud {removed}")
-                self.api.delete(message_id)
+                try:
+                    self.api.delete(message_id)
+                except Exception as exc:
+                    log(f"Gagal hapus cloud {removed}: {exc}")
                 self.state.remove(removed)
 
         for rel_path, local in current.items():
