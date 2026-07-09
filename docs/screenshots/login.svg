@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#0A0D12"/>
+  <rect x="405" y="145" width="390" height="385" rx="18" fill="#151A23" stroke="#1F2733"/>
+  <rect x="435" y="175" width="44" height="44" rx="10" fill="#2AABEE"/>
+  <text x="493" y="204" fill="#F3F5F7" font-family="Arial" font-size="26" font-weight="700">TeleDrive</text>
+  <text x="435" y="250" fill="#8A93A1" font-family="Arial" font-size="17">Masukkan password untuk mengakses Drive.</text>
+  <text x="435" y="310" fill="#8A93A1" font-family="Arial" font-size="14">Password</text>
+  <rect x="435" y="325" width="330" height="48" rx="9" fill="#0E1117" stroke="#2B3544"/>
+  <text x="456" y="356" fill="#8A93A1" font-family="Arial" font-size="18">••••••••</text>
+  <rect x="435" y="405" width="330" height="48" rx="9" fill="#2AABEE"/>
+  <text x="577" y="435" fill="#FFFFFF" font-family="Arial" font-size="16" font-weight="700">Masuk</text>
+  <text x="60" y="620" fill="#8A93A1" font-family="Arial" font-size="18">Screenshot: Halaman Login</text>
+</svg>

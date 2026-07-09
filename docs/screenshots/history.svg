@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#0A0D12"/>
+  <text x="365" y="58" fill="#2AABEE" font-family="Arial" font-size="18" font-weight="700">Riwayat</text>
+  <rect x="110" y="100" width="980" height="70" rx="14" fill="#151A23" stroke="#1F2733"/>
+  <text x="135" y="142" fill="#F3F5F7" font-family="Arial" font-size="22" font-weight="700">Riwayat Aktivitas</text>
+  <rect x="110" y="205" width="980" height="360" rx="14" fill="#151A23" stroke="#1F2733"/>
+  <line x1="150" y1="250" x2="150" y2="520" stroke="#2B3544" stroke-width="2"/>
+  <circle cx="150" cy="255" r="8" fill="#34D399"/>
+  <text x="178" y="262" fill="#F3F5F7" font-family="Arial" font-size="17" font-weight="700">Upload file</text>
+  <text x="178" y="286" fill="#8A93A1" font-family="Arial" font-size="14">report.pdf - 12:05</text>
+  <circle cx="150" cy="350" r="8" fill="#F59E0B"/>
+  <text x="178" y="357" fill="#F3F5F7" font-family="Arial" font-size="17" font-weight="700">Buat Folder</text>
+  <text x="178" y="381" fill="#8A93A1" font-family="Arial" font-size="14">Project/Design - 12:02</text>
+  <circle cx="150" cy="445" r="8" fill="#F87171"/>
+  <text x="178" y="452" fill="#F3F5F7" font-family="Arial" font-size="17" font-weight="700">Hapus file</text>
+  <text x="178" y="476" fill="#8A93A1" font-family="Arial" font-size="14">old-data.zip - 11:59</text>
+  <text x="60" y="620" fill="#8A93A1" font-family="Arial" font-size="18">Screenshot: Menu Riwayat</text>
+</svg>

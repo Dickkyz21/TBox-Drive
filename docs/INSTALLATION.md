@@ -18,6 +18,36 @@ TeleDrive terdiri dari 4 bagian:
 4. **Desktop Client**
    Aplikasi Python GUI yang dipasang di PC/laptop user. Client ini menyinkronkan folder lokal dengan server dan Telegram.
 
+## Screenshot Menu
+
+### Login
+
+![Halaman Login](screenshots/login.svg)
+
+### File Dashboard
+
+![Menu File](screenshots/file-dashboard.svg)
+
+### Catatan
+
+![Menu Catatan](screenshots/notes.svg)
+
+### Perangkat
+
+![Menu Perangkat](screenshots/clients.svg)
+
+### Riwayat
+
+![Menu Riwayat](screenshots/history.svg)
+
+### Pengaturan
+
+![Menu Pengaturan](screenshots/settings.svg)
+
+### Desktop Client
+
+![Desktop Client](screenshots/desktop-client.svg)
+
 ## 2. Mode Multi User
 
 TeleDrive saat ini cocok untuk:
@@ -303,4 +333,3 @@ Telegram Bot API punya batas ukuran upload. Jika butuh file sangat besar, perlu 
 - [ ] Upload file kecil berhasil.
 - [ ] Perangkat pertama sudah dibuat.
 - [ ] Desktop client berhasil ON.
-

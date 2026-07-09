@@ -13,6 +13,12 @@ Panduan instalasi dan konfigurasi lengkap ada di:
 
 [docs/INSTALLATION.md](docs/INSTALLATION.md)
 
+## Screenshot
+
+![Menu File](docs/screenshots/file-dashboard.svg)
+
+Screenshot menu lain tersedia di bagian **Screenshot Menu** pada [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
 ## Alur Cepat
 
 1. Buat bot Telegram dan group/channel storage.
@@ -41,4 +47,3 @@ Versi ini cocok untuk:
 - Banyak user dengan masing-masing deployment sendiri.
 
 Untuk model SaaS publik multi-tenant, project perlu ditambah sistem akun, workspace, dan storage terpisah per user.
-

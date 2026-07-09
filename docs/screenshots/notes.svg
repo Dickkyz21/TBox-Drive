@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#0A0D12"/>
+  <text x="110" y="58" fill="#8A93A1" font-family="Arial" font-size="18">File</text>
+  <text x="170" y="58" fill="#2AABEE" font-family="Arial" font-size="18" font-weight="700">Catatan</text>
+  <rect x="110" y="100" width="980" height="70" rx="14" fill="#151A23" stroke="#1F2733"/>
+  <text x="135" y="142" fill="#F3F5F7" font-family="Arial" font-size="22" font-weight="700">Catatan</text>
+  <rect x="940" y="116" width="120" height="38" rx="9" fill="#2AABEE"/>
+  <text x="969" y="140" fill="#FFFFFF" font-family="Arial" font-size="15" font-weight="700">Catatan Baru</text>
+  <rect x="110" y="205" width="280" height="180" rx="14" fill="#151A23" stroke="#F59E0B"/>
+  <text x="135" y="245" fill="#F3F5F7" font-family="Arial" font-size="19" font-weight="700">Ide Project</text>
+  <text x="135" y="278" fill="#C7CED6" font-family="Arial" font-size="15">Checklist fitur dan rencana sync...</text>
+  <rect x="420" y="205" width="280" height="180" rx="14" fill="#151A23" stroke="#2AABEE"/>
+  <text x="445" y="245" fill="#F3F5F7" font-family="Arial" font-size="19" font-weight="700">Catatan Meeting</text>
+  <text x="445" y="278" fill="#C7CED6" font-family="Arial" font-size="15">Deploy Vercel, Redis, Telegram...</text>
+  <rect x="730" y="205" width="280" height="180" rx="14" fill="#151A23" stroke="#34D399"/>
+  <text x="755" y="245" fill="#F3F5F7" font-family="Arial" font-size="19" font-weight="700">Todo</text>
+  <text x="755" y="278" fill="#C7CED6" font-family="Arial" font-size="15">Tambah perangkat client...</text>
+  <text x="60" y="620" fill="#8A93A1" font-family="Arial" font-size="18">Screenshot: Menu Catatan</text>
+</svg>
