@@ -1,19 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
   <rect width="1200" height="675" fill="#0A0D12"/>
-  <text x="110" y="58" fill="#8A93A1" font-family="Arial" font-size="18">File</text>
-  <text x="170" y="58" fill="#2AABEE" font-family="Arial" font-size="18" font-weight="700">Catatan</text>
-  <rect x="110" y="100" width="980" height="70" rx="14" fill="#151A23" stroke="#1F2733"/>
-  <text x="135" y="142" fill="#F3F5F7" font-family="Arial" font-size="22" font-weight="700">Catatan</text>
-  <rect x="940" y="116" width="120" height="38" rx="9" fill="#2AABEE"/>
-  <text x="969" y="140" fill="#FFFFFF" font-family="Arial" font-size="15" font-weight="700">Catatan Baru</text>
-  <rect x="110" y="205" width="280" height="180" rx="14" fill="#151A23" stroke="#F59E0B"/>
-  <text x="135" y="245" fill="#F3F5F7" font-family="Arial" font-size="19" font-weight="700">Ide Project</text>
-  <text x="135" y="278" fill="#C7CED6" font-family="Arial" font-size="15">Checklist fitur dan rencana sync...</text>
-  <rect x="420" y="205" width="280" height="180" rx="14" fill="#151A23" stroke="#2AABEE"/>
-  <text x="445" y="245" fill="#F3F5F7" font-family="Arial" font-size="19" font-weight="700">Catatan Meeting</text>
-  <text x="445" y="278" fill="#C7CED6" font-family="Arial" font-size="15">Deploy Vercel, Redis, Telegram...</text>
-  <rect x="730" y="205" width="280" height="180" rx="14" fill="#151A23" stroke="#34D399"/>
-  <text x="755" y="245" fill="#F3F5F7" font-family="Arial" font-size="19" font-weight="700">Todo</text>
-  <text x="755" y="278" fill="#C7CED6" font-family="Arial" font-size="15">Tambah perangkat client...</text>
-  <text x="60" y="620" fill="#8A93A1" font-family="Arial" font-size="18">Screenshot: Menu Catatan</text>
+  <circle cx="132" cy="36" r="14" fill="#2AABEE"/>
+  <text x="154" y="33" fill="#F3F5F7" font-family="Arial" font-size="17" font-weight="700">TeleDrive</text>
+  <circle cx="155" cy="50" r="3" fill="#34D399"/>
+  <text x="164" y="54" fill="#8A93A1" font-family="Arial" font-size="11">Terhubung · 2 file</text>
+  <text x="118" y="84" fill="#8A93A1" font-family="Arial" font-size="14">File</text>
+  <text x="158" y="84" fill="#2AABEE" font-family="Arial" font-size="14" font-weight="700">Catatan</text>
+  <text x="232" y="84" fill="#8A93A1" font-family="Arial" font-size="14">Perangkat</text>
+  <text x="330" y="84" fill="#8A93A1" font-family="Arial" font-size="14">Riwayat</text>
+  <text x="402" y="84" fill="#8A93A1" font-family="Arial" font-size="14">Pengaturan</text>
+  <line x1="110" y1="100" x2="1040" y2="100" stroke="#1F2733"/>
+  <line x1="158" y1="100" x2="210" y2="100" stroke="#2AABEE" stroke-width="2"/>
+  <text x="110" y="140" fill="#2AABEE" font-family="Arial" font-size="12" font-weight="700" letter-spacing="4">TASK NOTES</text>
+  <text x="110" y="171" fill="#F3F5F7" font-family="Arial" font-size="25" font-weight="700">Catatan To-Do</text>
+  <text x="110" y="196" fill="#8A93A1" font-family="Arial" font-size="14">3 sticky note aktif</text>
+  <rect x="925" y="168" width="115" height="34" rx="8" fill="#2AABEE"/>
+  <text x="954" y="190" fill="#FFFFFF" font-family="Arial" font-size="14" font-weight="700">Catatan Baru</text>
+  <g transform="translate(110 230) rotate(-0.8)">
+    <rect width="275" height="165" rx="3" fill="#9DECC5"/>
+    <rect x="122" y="10" width="34" height="8" rx="4" fill="#34D399"/>
+    <text x="16" y="46" fill="#0A0D12" font-family="Arial" font-size="17" font-weight="700">DFD 01</text>
+    <rect x="16" y="72" width="10" height="10" rx="2" fill="none" stroke="#0A0D12"/>
+    <text x="34" y="82" fill="#0A0D12" font-family="Arial" font-size="14">notesss 22</text>
+    <line x1="16" y1="130" x2="260" y2="130" stroke="#79D7AE"/>
+    <text x="16" y="153" fill="#385E55" font-family="monospace" font-size="12">Diedit Baru saja</text>
+  </g>
+  <g transform="translate(405 230) rotate(-0.4)">
+    <rect width="275" height="165" rx="3" fill="#F7BFC7"/>
+    <rect x="122" y="10" width="34" height="8" rx="4" fill="#F87171"/>
+    <text x="16" y="46" fill="#0A0D12" font-family="Arial" font-size="17" font-weight="700">fgdgdg</text>
+    <rect x="16" y="72" width="10" height="10" rx="2" fill="none" stroke="#0A0D12"/>
+    <text x="34" y="82" fill="#0A0D12" font-family="Arial" font-size="14">fdsfsdfsfsdfsf</text>
+    <line x1="16" y1="130" x2="260" y2="130" stroke="#E49CA7"/>
+    <text x="16" y="153" fill="#74515A" font-family="monospace" font-size="12">Diedit 6 jam lalu</text>
+  </g>
+  <g transform="translate(700 230) rotate(-0.8)">
+    <rect width="275" height="165" rx="3" fill="#FFF082"/>
+    <rect x="122" y="10" width="34" height="8" rx="4" fill="#F59E0B"/>
+    <text x="16" y="46" fill="#0A0D12" font-family="Arial" font-size="17" font-weight="700">tes notes brow 2</text>
+    <rect x="16" y="72" width="10" height="10" rx="2" fill="none" stroke="#0A0D12"/>
+    <text x="34" y="82" fill="#0A0D12" font-family="Arial" font-size="14">Oke jalan bosss</text>
+    <line x1="16" y1="130" x2="260" y2="130" stroke="#E8D563"/>
+    <text x="16" y="153" fill="#675F30" font-family="monospace" font-size="12">Diedit 1 hari lalu</text>
+  </g>
+  <rect x="110" y="445" width="930" height="54" rx="10" fill="#0E1117" stroke="#1F2733"/>
+  <text x="126" y="478" fill="#8A93A1" font-family="Arial" font-size="14">Menampilkan 1-3 dari 3 catatan</text>
+  <rect x="895" y="461" width="30" height="30" rx="8" fill="#2AABEE"/>
+  <text x="906" y="481" fill="#FFFFFF" font-family="Arial" font-size="14" font-weight="700">1</text>
 </svg>

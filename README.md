@@ -13,11 +13,29 @@ Panduan instalasi dan konfigurasi lengkap ada di:
 
 [docs/INSTALLATION.md](docs/INSTALLATION.md)
 
-## Screenshot
+## Screenshot Program
 
 ![Menu File](docs/screenshots/file-dashboard.svg)
 
-Screenshot menu lain tersedia di bagian **Screenshot Menu** pada [docs/INSTALLATION.md](docs/INSTALLATION.md).
+### Catatan
+
+![Menu Catatan](docs/screenshots/notes.svg)
+
+### Perangkat
+
+![Menu Perangkat](docs/screenshots/clients.svg)
+
+### Riwayat
+
+![Menu Riwayat](docs/screenshots/history.svg)
+
+### Pengaturan
+
+![Menu Pengaturan](docs/screenshots/settings.svg)
+
+### Desktop Client
+
+![Desktop Client](docs/screenshots/desktop-client.svg)
 
 ## Alur Cepat
 

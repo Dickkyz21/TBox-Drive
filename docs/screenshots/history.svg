@@ -1,18 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
   <rect width="1200" height="675" fill="#0A0D12"/>
-  <text x="365" y="58" fill="#2AABEE" font-family="Arial" font-size="18" font-weight="700">Riwayat</text>
-  <rect x="110" y="100" width="980" height="70" rx="14" fill="#151A23" stroke="#1F2733"/>
-  <text x="135" y="142" fill="#F3F5F7" font-family="Arial" font-size="22" font-weight="700">Riwayat Aktivitas</text>
-  <rect x="110" y="205" width="980" height="360" rx="14" fill="#151A23" stroke="#1F2733"/>
-  <line x1="150" y1="250" x2="150" y2="520" stroke="#2B3544" stroke-width="2"/>
-  <circle cx="150" cy="255" r="8" fill="#34D399"/>
-  <text x="178" y="262" fill="#F3F5F7" font-family="Arial" font-size="17" font-weight="700">Upload file</text>
-  <text x="178" y="286" fill="#8A93A1" font-family="Arial" font-size="14">report.pdf - 12:05</text>
-  <circle cx="150" cy="350" r="8" fill="#F59E0B"/>
-  <text x="178" y="357" fill="#F3F5F7" font-family="Arial" font-size="17" font-weight="700">Buat Folder</text>
-  <text x="178" y="381" fill="#8A93A1" font-family="Arial" font-size="14">Project/Design - 12:02</text>
-  <circle cx="150" cy="445" r="8" fill="#F87171"/>
-  <text x="178" y="452" fill="#F3F5F7" font-family="Arial" font-size="17" font-weight="700">Hapus file</text>
-  <text x="178" y="476" fill="#8A93A1" font-family="Arial" font-size="14">old-data.zip - 11:59</text>
-  <text x="60" y="620" fill="#8A93A1" font-family="Arial" font-size="18">Screenshot: Menu Riwayat</text>
+  <circle cx="132" cy="36" r="14" fill="#2AABEE"/><text x="154" y="33" fill="#F3F5F7" font-family="Arial" font-size="17" font-weight="700">TeleDrive</text>
+  <circle cx="155" cy="50" r="3" fill="#34D399"/><text x="164" y="54" fill="#8A93A1" font-family="Arial" font-size="11">Terhubung · 2 file</text>
+  <text x="118" y="84" fill="#8A93A1" font-family="Arial" font-size="14">File</text><text x="158" y="84" fill="#8A93A1" font-family="Arial" font-size="14">Catatan</text><text x="232" y="84" fill="#8A93A1" font-family="Arial" font-size="14">Perangkat</text><text x="330" y="84" fill="#2AABEE" font-family="Arial" font-size="14" font-weight="700">Riwayat</text><text x="402" y="84" fill="#8A93A1" font-family="Arial" font-size="14">Pengaturan</text>
+  <line x1="110" y1="100" x2="1040" y2="100" stroke="#1F2733"/><line x1="330" y1="100" x2="386" y2="100" stroke="#2AABEE" stroke-width="2"/>
+  <text x="110" y="145" fill="#8A93A1" font-family="Arial" font-size="14">200 aktivitas terakhir</text>
+  <text x="885" y="145" fill="#8A93A1" font-family="Arial" font-size="12">Maks. 200 entri terbaru disimpan</text>
+  <g transform="translate(110 175)">
+    <rect width="930" height="42" rx="8" fill="#0E1117" stroke="#1F2733"/><rect x="15" y="13" width="72" height="18" rx="9" fill="#3A2606" stroke="#F59E0B"/><text x="24" y="26" fill="#F59E0B" font-family="Arial" font-size="11">Edit Catatan</text><text x="100" y="27" fill="#F3F5F7" font-family="Arial" font-size="14" font-weight="700">DFD 01</text><text x="865" y="27" fill="#8A93A1" font-family="Arial" font-size="12">Baru saja</text>
+    <rect y="48" width="930" height="54" rx="8" fill="#0E1117" stroke="#1F2733"/><rect x="15" y="62" width="72" height="18" rx="9" fill="#3A0606" stroke="#F87171"/><text x="24" y="75" fill="#F87171" font-family="Arial" font-size="11">Hapus Folder</text><text x="100" y="76" fill="#F3F5F7" font-family="Arial" font-size="14" font-weight="700">YOP 2</text><text x="103" y="93" fill="#8A93A1" font-family="Arial" font-size="12">1 file</text><text x="855" y="76" fill="#8A93A1" font-family="Arial" font-size="12">24 menit lalu</text>
+    <rect y="108" width="930" height="54" rx="8" fill="#0E1117" stroke="#1F2733"/><rect x="15" y="122" width="48" height="18" rx="9" fill="#06263A" stroke="#2AABEE"/><text x="25" y="135" fill="#2AABEE" font-family="Arial" font-size="11">Upload</text><text x="100" y="136" fill="#F3F5F7" font-family="Arial" font-size="14" font-weight="700">Screenshot from 2026-06-17 16-03-54.png</text><text x="103" y="153" fill="#8A93A1" font-family="Arial" font-size="12">243.5 KB</text><text x="855" y="136" fill="#8A93A1" font-family="Arial" font-size="12">25 menit lalu</text>
+    <rect y="168" width="930" height="54" rx="8" fill="#0E1117" stroke="#1F2733"/><rect x="15" y="182" width="48" height="18" rx="9" fill="#06263A" stroke="#2AABEE"/><text x="25" y="195" fill="#2AABEE" font-family="Arial" font-size="11">Upload</text><text x="100" y="196" fill="#F3F5F7" font-family="Arial" font-size="14" font-weight="700">Screenshot from 2026-06-17 16-03-37.png</text><text x="103" y="213" fill="#8A93A1" font-family="Arial" font-size="12">1.1 MB</text><text x="855" y="196" fill="#8A93A1" font-family="Arial" font-size="12">26 menit lalu</text>
+    <rect y="228" width="930" height="54" rx="8" fill="#0E1117" stroke="#1F2733"/><rect x="15" y="242" width="72" height="18" rx="9" fill="#3A0606" stroke="#F87171"/><text x="24" y="255" fill="#F87171" font-family="Arial" font-size="11">Hapus Folder</text><text x="100" y="256" fill="#F3F5F7" font-family="Arial" font-size="14" font-weight="700">YOSS</text><text x="103" y="273" fill="#8A93A1" font-family="Arial" font-size="12">0 file</text><text x="855" y="256" fill="#8A93A1" font-family="Arial" font-size="12">34 menit lalu</text>
+  </g>
+  <rect x="110" y="585" width="930" height="48" rx="10" fill="#0E1117" stroke="#1F2733"/>
+  <text x="126" y="615" fill="#8A93A1" font-family="Arial" font-size="13">Menampilkan 1-10 dari 200 aktivitas</text>
+  <rect x="820" y="597" width="30" height="30" rx="8" fill="#2AABEE"/><text x="831" y="617" fill="#FFFFFF" font-family="Arial" font-size="14" font-weight="700">1</text>
 </svg>
