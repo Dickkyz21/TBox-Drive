@@ -63,7 +63,7 @@ except Exception as exc:
 
 APP_NAME = "TeleDrive Desktop"
 STATE_FILE = ".teledrive-state.json"
-DEFAULT_INTERVAL = 30
+DEFAULT_INTERVAL = 5
 DEFAULT_SERVER_URL = os.environ.get("TELEDRIVE_SERVER_URL", "").strip()
 
 def runtime_info() -> str:

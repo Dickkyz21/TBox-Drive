@@ -331,6 +331,18 @@ export async function pullPendingUpdates(): Promise<PulledData> {
             fileId: msg.document.file_id,
             folderId: meta.f,
           });
+        } else {
+          files.push({
+            messageId: msg.message_id,
+            name: msg.document.file_name || `telegram-file-${msg.message_id}`,
+            size: Number(msg.document.file_size || 0),
+            mime: msg.document.mime_type || 'application/octet-stream',
+            uploadedAt: msg.date
+              ? new Date(Number(msg.date) * 1000).toISOString()
+              : new Date().toISOString(),
+            fileId: msg.document.file_id,
+            folderId: null,
+          });
         }
       } else if (msg.text) {
         const meta = decodeNoteText(msg.text);

@@ -554,42 +554,6 @@ export function ClientsManager({
           onPageSizeChange={setPageSize}
           itemLabel="perangkat"
         />
-
-        {/* Petunjuk singkat */}
-        <div className="border border-base-700/60 rounded-xl p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="font-semibold text-sm text-ink-100">Cara pakai di PC baru</h3>
-            <span className="rounded-full border border-base-700 px-2 py-0.5 text-[11px] text-ink-500">
-              Setup singkat
-            </span>
-          </div>
-          <ol className="space-y-3 text-xs text-ink-500">
-            <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">1</span>
-              <span>Klik <span className="text-ink-300">Client</span> untuk Windows, atau <span className="text-ink-300">Linux All-in-One</span> untuk Linux.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">2</span>
-              <span>Klik <span className="text-ink-300">Tambah Perangkat</span>, isi nama PC, lalu buat API key.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">3</span>
-              <span>Copy API key perangkat dari halaman ini.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">4</span>
-              <span>Buka TeleDrive Desktop, paste API key, lalu pilih folder lokal.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">5</span>
-              <span>Klik <span className="text-ink-300">ON</span> atau <span className="text-ink-300">Start</span> di aplikasi desktop.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">6</span>
-              <span>Di Linux, file All-in-One akan cek path Python, venv, tkinter, lalu menawarkan install driver pendukung jika belum ada.</span>
-            </li>
-          </ol>
-        </div>
       </main>
 
       <AddDeviceModal
