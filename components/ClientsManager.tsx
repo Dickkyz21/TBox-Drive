@@ -435,15 +435,15 @@ export function ClientsManager({
                   Windows Startup
                 </span>
                 <span className="rounded border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[11px] font-medium text-violet-400">
-                  Linux Launcher
+                  Linux All-in-One
                 </span>
               </div>
               <p className="mt-1 text-xs text-ink-500">
                 GUI baru bergaya control panel: ON untuk menjalankan sync, OFF untuk stop dan close aplikasi.
-                Linux bisa memakai launcher klik dua kali dan tersedia driver pendukung jika Python/tkinter belum ada.
+                File Linux sudah mencakup client, cek Python/tkinter/venv, dan opsi install driver pendukung.
               </p>
             </div>
-            <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-3 lg:min-w-[520px]">
+            <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:min-w-[360px]">
               <a
                 href="/api/desktop-client"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-tg-500 px-3 py-2 text-sm font-medium text-white hover:bg-tg-600"
@@ -457,13 +457,7 @@ export function ClientsManager({
                 href="/api/desktop-client?platform=linux-launcher"
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-400/40 px-3 py-2 text-sm font-medium text-violet-400 hover:bg-violet-400/10"
               >
-                Linux Launcher
-              </a>
-              <a
-                href="/api/desktop-client?platform=linux-support"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-base-600 px-3 py-2 text-sm font-medium text-ink-300 hover:bg-base-700/60"
-              >
-                Driver Linux
+                Linux All-in-One
               </a>
             </div>
           </div>
@@ -572,7 +566,7 @@ export function ClientsManager({
           <ol className="space-y-3 text-xs text-ink-500">
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">1</span>
-              <span>Klik <span className="text-ink-300">Client</span> untuk Windows, atau <span className="text-ink-300">Linux Launcher</span> agar bisa dibuka tanpa terminal di Linux.</span>
+              <span>Klik <span className="text-ink-300">Client</span> untuk Windows, atau <span className="text-ink-300">Linux All-in-One</span> untuk Linux.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">2</span>
@@ -592,7 +586,7 @@ export function ClientsManager({
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">6</span>
-              <span>Jika Linux belum punya Python/tkinter, klik <span className="text-ink-300">Driver Linux</span> untuk cek path, venv, dan install paket pendukung.</span>
+              <span>Di Linux, file All-in-One akan cek path Python, venv, tkinter, lalu menawarkan install driver pendukung jika belum ada.</span>
             </li>
           </ol>
         </div>
