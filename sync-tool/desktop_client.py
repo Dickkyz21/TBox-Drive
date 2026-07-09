@@ -32,13 +32,49 @@ import ctypes
 from dataclasses import dataclass
 from pathlib import Path
 from ctypes import wintypes
-from tkinter import filedialog, messagebox, ttk
-import tkinter as tk
+
+try:
+    from tkinter import filedialog, messagebox, ttk
+    import tkinter as tk
+except Exception as exc:
+    message = (
+        "TeleDrive Desktop membutuhkan driver pendukung Linux:\n\n"
+        "- python3\n"
+        "- tkinter / python3-tk\n"
+        "- python3-venv\n\n"
+        f"Python path: {sys.executable}\n"
+        f"Error: {exc}\n\n"
+        "Buka halaman Clients lalu unduh 'Driver Pendukung Linux', atau install manual paket python3-tk."
+    )
+    if platform.system() == "Linux":
+        for command in (
+            ["zenity", "--error", "--title=TeleDrive Driver Pendukung", f"--text={message}", "--width=560"],
+            ["kdialog", "--error", message],
+            ["xmessage", "-center", message],
+        ):
+            try:
+                subprocess.Popen(command)
+                break
+            except Exception:
+                continue
+    else:
+        print(message)
+    sys.exit(1)
 
 APP_NAME = "TeleDrive Desktop"
 STATE_FILE = ".teledrive-state.json"
 DEFAULT_INTERVAL = 30
 DEFAULT_SERVER_URL = os.environ.get("TELEDRIVE_SERVER_URL", "").strip()
+
+def runtime_info() -> str:
+    venv = os.environ.get("VIRTUAL_ENV")
+    if venv:
+        venv_label = f"venv: {venv}"
+    elif getattr(sys, "base_prefix", sys.prefix) != sys.prefix:
+        venv_label = f"venv: {sys.prefix}"
+    else:
+        venv_label = "venv: tidak aktif"
+    return f"Python: {sys.executable} | {venv_label}"
 
 
 def app_dir() -> Path:
@@ -528,6 +564,7 @@ class DesktopApp:
         self.detail_var = tk.StringVar(value="Isi API key, pilih folder, lalu klik Connect.")
         self.device_var = tk.StringVar(value=self.config.get("device_name") or "-")
         self.folder_display_var = tk.StringVar(value=self.config["folder"])
+        self.runtime_var = tk.StringVar(value=runtime_info())
 
         self.build_ui()
         self.root.after(100, self.init_tray)
@@ -604,6 +641,17 @@ class DesktopApp:
         tk.Button(folder_actions, text="Browse", command=self.pick_folder, bg="#56616F", fg="#FFFFFF",
                   relief="flat", width=8, pady=4).pack(side="left", padx=(0, 6))
         tk.Button(folder_actions, text="Open", command=self.open_folder, bg="#56616F", fg="#FFFFFF",
+                  relief="flat", width=8, pady=4).pack(side="left")
+
+        tk.Label(table, text="Runtime", bg="#FFFFFF", fg="#27313F",
+                 font=("Segoe UI", 10, "bold"), anchor="w").grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+        tk.Label(table, text="Detected", bg="#FFFFFF", fg="#2EAD4F",
+                 font=("Segoe UI", 10, "bold"), anchor="w").grid(row=3, column=1, sticky="ew", padx=10, pady=10)
+        tk.Label(table, textvariable=self.runtime_var, bg="#FFFFFF", fg="#637083",
+                 font=("Consolas", 9), anchor="w").grid(row=3, column=2, sticky="ew", padx=10, pady=10)
+        runtime_actions = tk.Frame(table, bg="#FFFFFF")
+        runtime_actions.grid(row=3, column=3, sticky="e", padx=10, pady=8)
+        tk.Button(runtime_actions, text="Check", command=self.show_runtime_info, bg="#56616F", fg="#FFFFFF",
                   relief="flat", width=8, pady=4).pack(side="left")
 
         form = tk.Frame(frame, bg="#F1F3F6")
@@ -685,6 +733,16 @@ class DesktopApp:
         self.config = self.current_config()
         save_config(self.config)
         set_autostart(self.config["autostart"])
+
+    def show_runtime_info(self) -> None:
+        self.runtime_var.set(runtime_info())
+        messagebox.showinfo(
+            APP_NAME,
+            (
+                f"{runtime_info()}\n\n"
+                "Jika Linux tidak bisa membuka aplikasi, unduh Driver Pendukung Linux dari halaman Clients."
+            ),
+        )
 
     def update_status_view(self, status: str) -> None:
         if status in ("online", "syncing"):

@@ -434,21 +434,38 @@ export function ClientsManager({
                 <span className="rounded border border-warn-400/30 bg-warn-400/10 px-2 py-0.5 text-[11px] font-medium text-warn-400">
                   Windows Startup
                 </span>
+                <span className="rounded border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[11px] font-medium text-violet-400">
+                  Linux Launcher
+                </span>
               </div>
               <p className="mt-1 text-xs text-ink-500">
                 GUI baru bergaya control panel: ON untuk menjalankan sync, OFF untuk stop dan close aplikasi.
-                Centang Startup Windows jika client harus otomatis berjalan setelah Windows restart.
+                Linux bisa memakai launcher klik dua kali dan tersedia driver pendukung jika Python/tkinter belum ada.
               </p>
             </div>
-            <a
-              href="/api/desktop-client"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-tg-500 px-4 py-2 text-sm font-medium text-white hover:bg-tg-600"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-                <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Download Desktop Client
-            </a>
+            <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-3 lg:min-w-[520px]">
+              <a
+                href="/api/desktop-client"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-tg-500 px-3 py-2 text-sm font-medium text-white hover:bg-tg-600"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                  <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Client
+              </a>
+              <a
+                href="/api/desktop-client?platform=linux-launcher"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-400/40 px-3 py-2 text-sm font-medium text-violet-400 hover:bg-violet-400/10"
+              >
+                Linux Launcher
+              </a>
+              <a
+                href="/api/desktop-client?platform=linux-support"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-base-600 px-3 py-2 text-sm font-medium text-ink-300 hover:bg-base-700/60"
+              >
+                Driver Linux
+              </a>
+            </div>
           </div>
         </div>
 
@@ -555,7 +572,7 @@ export function ClientsManager({
           <ol className="space-y-3 text-xs text-ink-500">
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">1</span>
-              <span>Klik <span className="text-ink-300">Download Desktop Client</span> dan jalankan TeleDrive Desktop di PC tujuan.</span>
+              <span>Klik <span className="text-ink-300">Client</span> untuk Windows, atau <span className="text-ink-300">Linux Launcher</span> agar bisa dibuka tanpa terminal di Linux.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">2</span>
@@ -575,7 +592,7 @@ export function ClientsManager({
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">6</span>
-              <span>Centang <span className="text-ink-300">Startup Windows</span> bila ingin otomatis jalan setelah restart; kosongkan bila tidak.</span>
+              <span>Jika Linux belum punya Python/tkinter, klik <span className="text-ink-300">Driver Linux</span> untuk cek path, venv, dan install paket pendukung.</span>
             </li>
           </ol>
         </div>
