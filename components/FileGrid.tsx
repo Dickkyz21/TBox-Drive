@@ -448,7 +448,7 @@ function CreateFolderModal({
         <div className="w-full max-w-md rounded-xl border border-base-700 bg-base-800 p-5 shadow-2xl">
           <h3 className="text-sm font-semibold text-ink-100">Folder Baru</h3>
           <p className="mt-1 text-xs text-ink-500">
-            Folder dibuat di {parent ? `/${parent}` : 'Root'} dan bisa langsung diisi upload.
+            Folder dibuat di {parent ? `/${parent}` : 'Home'} dan bisa langsung diisi upload.
           </p>
           <input
             autoFocus
@@ -608,7 +608,7 @@ export function FileGrid({
                 : 'bg-base-700 text-ink-100'
             }`}
           >
-            Root
+            Home
           </button>
           {currentFolder && (
             <>
@@ -631,7 +631,7 @@ export function FileGrid({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-base-700 bg-base-800/50 px-4 py-3">
-          <p className="text-xs text-ink-500">{currentFolder ? 'File folder' : 'File root'}</p>
+          <p className="text-xs text-ink-500">{currentFolder ? 'File folder' : 'File Home'}</p>
           <p className="mt-1 text-xl font-semibold text-ink-100">{filesInCurrentFolder.length}</p>
         </div>
         <div className="rounded-lg border border-base-700 bg-base-800/50 px-4 py-3">
