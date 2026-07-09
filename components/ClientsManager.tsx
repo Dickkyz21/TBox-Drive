@@ -423,19 +423,31 @@ export function ClientsManager({
           </div>
         </div>
 
-        <div className="rounded-xl border border-tg-500/25 bg-tg-500/10 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-ink-100">TeleDrive Desktop Client</p>
+        <div className="rounded-xl border border-base-700 bg-base-800/70 p-4 shadow-glow">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-ink-100">TeleDrive Desktop Client</p>
+                <span className="rounded border border-ok-400/30 bg-ok-400/10 px-2 py-0.5 text-[11px] font-medium text-ok-400">
+                  ON/OFF Control
+                </span>
+                <span className="rounded border border-warn-400/30 bg-warn-400/10 px-2 py-0.5 text-[11px] font-medium text-warn-400">
+                  Windows Startup
+                </span>
+              </div>
               <p className="mt-1 text-xs text-ink-500">
-                Install di Windows/Linux, isi API key perangkat, pilih folder lokal, lalu Connect.
+                GUI baru bergaya control panel: ON untuk menjalankan sync, OFF untuk stop dan close aplikasi.
+                Centang Startup Windows jika client harus otomatis berjalan setelah Windows restart.
               </p>
             </div>
             <a
               href="/api/desktop-client"
-              className="inline-flex items-center justify-center rounded-lg border border-tg-500/40 px-4 py-2 text-sm font-medium text-tg-500 hover:bg-tg-500/10"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-tg-500 px-4 py-2 text-sm font-medium text-white hover:bg-tg-600"
             >
-              Download Client
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Download Desktop Client
             </a>
           </div>
         </div>
@@ -543,7 +555,7 @@ export function ClientsManager({
           <ol className="space-y-3 text-xs text-ink-500">
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">1</span>
-              <span>Klik <span className="text-ink-300">Download Client</span> dan install TeleDrive Desktop di PC tujuan.</span>
+              <span>Klik <span className="text-ink-300">Download Desktop Client</span> dan jalankan TeleDrive Desktop di PC tujuan.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">2</span>
@@ -559,11 +571,11 @@ export function ClientsManager({
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">5</span>
-              <span>Klik <span className="text-ink-300">Connect</span> di aplikasi desktop.</span>
+              <span>Klik <span className="text-ink-300">ON</span> atau <span className="text-ink-300">Start</span> di aplikasi desktop.</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] text-ink-300">6</span>
-              <span>Status perangkat berubah jadi <span className="text-ok-400">Online</span> dalam 30 detik.</span>
+              <span>Centang <span className="text-ink-300">Startup Windows</span> bila ingin otomatis jalan setelah restart; kosongkan bila tidak.</span>
             </li>
           </ol>
         </div>

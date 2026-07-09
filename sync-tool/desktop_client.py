@@ -221,7 +221,7 @@ def load_config() -> dict:
         "device_id": data.get("device_id", ""),
         "device_name": data.get("device_name", ""),
         "interval": int(data.get("interval", DEFAULT_INTERVAL)),
-        "autostart": bool(data.get("autostart", True)),
+        "autostart": bool(data.get("autostart", False)),
     }
 
 
@@ -510,20 +510,24 @@ class DesktopApp:
         self.events: queue.Queue = queue.Queue()
         self.worker: SyncWorker | None = None
         self.tray_icon: WindowsTrayIcon | None = None
+        self.is_quitting = False
 
         self.root = tk.Tk()
         self.root.title(APP_NAME)
-        self.root.geometry("560x520")
-        self.root.minsize(520, 500)
-        self.root.configure(bg="#0E1117")
-        self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
+        self.root.geometry("720x540")
+        self.root.minsize(680, 500)
+        self.root.configure(bg="#F1F3F6")
+        self.root.protocol("WM_DELETE_WINDOW", self.handle_close)
 
         self.server_var = tk.StringVar(value=self.config["server_url"])
         self.key_var = tk.StringVar(value=self.config["api_key"])
         self.folder_var = tk.StringVar(value=self.config["folder"])
         self.autostart_var = tk.BooleanVar(value=self.config["autostart"])
+        self.power_var = tk.BooleanVar(value=False)
         self.status_var = tk.StringVar(value="Disconnected")
         self.detail_var = tk.StringVar(value="Isi API key, pilih folder, lalu klik Connect.")
+        self.device_var = tk.StringVar(value=self.config.get("device_name") or "-")
+        self.folder_display_var = tk.StringVar(value=self.config["folder"])
 
         self.build_ui()
         self.root.after(100, self.init_tray)
@@ -536,61 +540,104 @@ class DesktopApp:
         except Exception:
             pass
 
-        frame = tk.Frame(self.root, bg="#0E1117", padx=24, pady=20)
+        style.configure("TCheckbutton", background="#F1F3F6", foreground="#27313F", font=("Segoe UI", 9))
+
+        header = tk.Frame(self.root, bg="#2E3642", height=58)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+        tk.Label(header, text="TeleDrive Desktop Client", bg="#2E3642", fg="#FFFFFF",
+                 font=("Segoe UI", 15, "bold")).pack(side="left", padx=18)
+        tk.Label(header, text="Control Panel", bg="#2E3642", fg="#AEB7C4",
+                 font=("Segoe UI", 9)).pack(side="right", padx=18)
+
+        frame = tk.Frame(self.root, bg="#F1F3F6", padx=18, pady=16)
         frame.pack(fill="both", expand=True)
 
-        tk.Label(frame, text="TeleDrive Desktop", bg="#0E1117", fg="#F3F5F7",
-                 font=("Segoe UI", 18, "bold")).pack(anchor="w")
-        tk.Label(frame, text="Connect PC user ke TeleDrive tanpa install komponen tambahan.",
-                 bg="#0E1117", fg="#8A93A1", font=("Segoe UI", 9)).pack(anchor="w", pady=(2, 18))
+        control = tk.Frame(frame, bg="#FFFFFF", highlightthickness=1, highlightbackground="#C8D0DA")
+        control.pack(fill="x")
 
-        self.add_field(frame, "Server URL (otomatis terisi dari download/installer)", self.server_var, show=None)
-        self.add_field(frame, "API Key Perangkat", self.key_var, show="*")
+        top = tk.Frame(control, bg="#FFFFFF", padx=14, pady=12)
+        top.pack(fill="x")
+        self.status_badge = tk.Label(top, text="OFF", bg="#C0392B", fg="#FFFFFF",
+                                     font=("Segoe UI", 12, "bold"), width=8)
+        self.status_badge.pack(side="left")
+        tk.Label(top, textvariable=self.status_var, bg="#FFFFFF", fg="#202832",
+                 font=("Segoe UI", 12, "bold")).pack(side="left", padx=(12, 0))
+        tk.Button(top, text="ON", command=self.power_on, bg="#2EAD4F", fg="#FFFFFF",
+                  relief="flat", font=("Segoe UI", 10, "bold"), width=10, pady=6).pack(side="right", padx=(8, 0))
+        tk.Button(top, text="OFF", command=self.power_off, bg="#D9534F", fg="#FFFFFF",
+                  relief="flat", font=("Segoe UI", 10, "bold"), width=10, pady=6).pack(side="right")
 
-        tk.Label(frame, text="Folder lokal", bg="#0E1117", fg="#C7CED6",
-                 font=("Segoe UI", 9)).pack(anchor="w", pady=(10, 4))
-        row = tk.Frame(frame, bg="#0E1117")
-        row.pack(fill="x")
-        tk.Entry(row, textvariable=self.folder_var, bg="#151A23", fg="#F3F5F7",
-                 insertbackground="white", relief="flat", font=("Consolas", 10)).pack(
-            side="left", fill="x", expand=True, ipady=7)
-        tk.Button(row, text="Pilih Folder", command=self.pick_folder, bg="#1F2733",
-                  fg="#F3F5F7", relief="flat", padx=12, pady=6).pack(side="left", padx=(8, 0))
+        tk.Label(control, textvariable=self.detail_var, bg="#FFFFFF", fg="#637083",
+                 font=("Segoe UI", 9), wraplength=650, justify="left").pack(fill="x", padx=14, pady=(0, 12), anchor="w")
 
-        buttons = tk.Frame(frame, bg="#0E1117")
-        buttons.pack(fill="x", pady=(14, 10))
-        self.connect_btn = tk.Button(buttons, text="Connect", command=self.connect,
-                                     bg="#2AABEE", fg="white", relief="flat",
-                                     font=("Segoe UI", 11, "bold"), padx=26, pady=10)
-        self.connect_btn.pack(side="left", fill="x", expand=True)
-        tk.Button(buttons, text="Disconnect", command=self.disconnect, bg="#1F2733",
-                  fg="#F3F5F7", relief="flat", padx=14, pady=10).pack(side="left", padx=(8, 0))
-        tk.Button(buttons, text="Buka Folder", command=self.open_folder, bg="#1F2733",
-                  fg="#F3F5F7", relief="flat", padx=14, pady=10).pack(side="right", padx=(8, 0))
+        table = tk.Frame(frame, bg="#FFFFFF", highlightthickness=1, highlightbackground="#C8D0DA")
+        table.pack(fill="both", expand=True, pady=(14, 0))
+        for col, text, width in [(0, "Module", 15), (1, "Status", 13), (2, "Info", 34), (3, "Actions", 22)]:
+            tk.Label(table, text=text, bg="#E8ECF2", fg="#27313F",
+                     font=("Segoe UI", 9, "bold"), anchor="w", width=width).grid(
+                         row=0, column=col, sticky="ew", padx=1, pady=1, ipady=7)
+        table.grid_columnconfigure(2, weight=1)
 
-        tk.Checkbutton(frame, text="Jalankan otomatis saat komputer dinyalakan",
-                       variable=self.autostart_var, bg="#0E1117", fg="#C7CED6",
-                       selectcolor="#151A23", activebackground="#0E1117",
-                       font=("Segoe UI", 9)).pack(anchor="w", pady=(4, 12))
+        tk.Label(table, text="Sync Service", bg="#FFFFFF", fg="#27313F",
+                 font=("Segoe UI", 10, "bold"), anchor="w").grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        self.service_state = tk.Label(table, text="Stopped", bg="#FFFFFF", fg="#C0392B",
+                                      font=("Segoe UI", 10, "bold"), anchor="w")
+        self.service_state.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
+        tk.Label(table, textvariable=self.device_var, bg="#FFFFFF", fg="#637083",
+                 font=("Segoe UI", 9), anchor="w").grid(row=1, column=2, sticky="ew", padx=10, pady=10)
+        action_row = tk.Frame(table, bg="#FFFFFF")
+        action_row.grid(row=1, column=3, sticky="e", padx=10, pady=8)
+        tk.Button(action_row, text="Start", command=self.connect, bg="#4CAF50", fg="#FFFFFF",
+                  relief="flat", width=8, pady=4).pack(side="left", padx=(0, 6))
+        tk.Button(action_row, text="Stop", command=self.disconnect, bg="#D9534F", fg="#FFFFFF",
+                  relief="flat", width=8, pady=4).pack(side="left")
 
-        status_box = tk.Frame(frame, bg="#151A23", padx=14, pady=12)
-        status_box.pack(fill="x")
-        tk.Label(status_box, textvariable=self.status_var, bg="#151A23", fg="#2AABEE",
-                 font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        tk.Label(status_box, textvariable=self.detail_var, bg="#151A23", fg="#8A93A1",
-                 font=("Segoe UI", 9), wraplength=480, justify="left").pack(anchor="w", pady=(3, 0))
+        tk.Label(table, text="Folder", bg="#FFFFFF", fg="#27313F",
+                 font=("Segoe UI", 10, "bold"), anchor="w").grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        tk.Label(table, text="Ready", bg="#FFFFFF", fg="#2EAD4F",
+                 font=("Segoe UI", 10, "bold"), anchor="w").grid(row=2, column=1, sticky="ew", padx=10, pady=10)
+        tk.Label(table, textvariable=self.folder_display_var, bg="#FFFFFF", fg="#637083",
+                 font=("Consolas", 9), anchor="w").grid(row=2, column=2, sticky="ew", padx=10, pady=10)
+        folder_actions = tk.Frame(table, bg="#FFFFFF")
+        folder_actions.grid(row=2, column=3, sticky="e", padx=10, pady=8)
+        tk.Button(folder_actions, text="Browse", command=self.pick_folder, bg="#56616F", fg="#FFFFFF",
+                  relief="flat", width=8, pady=4).pack(side="left", padx=(0, 6))
+        tk.Button(folder_actions, text="Open", command=self.open_folder, bg="#56616F", fg="#FFFFFF",
+                  relief="flat", width=8, pady=4).pack(side="left")
+
+        form = tk.Frame(frame, bg="#F1F3F6")
+        form.pack(fill="x", pady=(14, 0))
+        left = tk.Frame(form, bg="#F1F3F6")
+        left.pack(side="left", fill="both", expand=True)
+        right = tk.Frame(form, bg="#F1F3F6")
+        right.pack(side="right", fill="y", padx=(14, 0))
+
+        self.add_field(left, "Server URL", self.server_var, show=None)
+        self.add_field(left, "API Key Perangkat", self.key_var, show="*")
+
+        tk.Checkbutton(right, text="Startup Windows",
+                       variable=self.autostart_var, command=self.update_autostart,
+                       bg="#F1F3F6", fg="#27313F", selectcolor="#FFFFFF",
+                       activebackground="#F1F3F6", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(22, 8))
+        tk.Label(right, text="Dicentang: otomatis berjalan saat Windows restart.\nTidak dicentang: tidak auto running.",
+                 bg="#F1F3F6", fg="#637083", font=("Segoe UI", 8),
+                 justify="left").pack(anchor="w")
 
     def add_field(self, parent, label: str, variable: tk.StringVar, show: str | None = None) -> None:
-        tk.Label(parent, text=label, bg="#0E1117", fg="#C7CED6",
-                 font=("Segoe UI", 9)).pack(anchor="w", pady=(10, 4))
-        tk.Entry(parent, textvariable=variable, bg="#151A23", fg="#F3F5F7",
-                 insertbackground="white", relief="flat", font=("Consolas", 10),
-                 show=show or "").pack(fill="x", ipady=7)
+        tk.Label(parent, text=label, bg="#F1F3F6", fg="#27313F",
+                 font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(0, 4))
+        tk.Entry(parent, textvariable=variable, bg="#FFFFFF", fg="#202832",
+                 insertbackground="#202832", relief="solid", bd=1, font=("Consolas", 10),
+                 show=show or "").pack(fill="x", ipady=7, pady=(0, 10))
 
     def pick_folder(self) -> None:
         folder = filedialog.askdirectory(title="Pilih folder lokal TeleDrive")
         if folder:
             self.folder_var.set(folder)
+            self.folder_display_var.set(folder)
+            self.config = self.current_config()
+            save_config(self.config)
 
     def current_config(self) -> dict:
         return {
@@ -613,6 +660,8 @@ class DesktopApp:
         set_autostart(config["autostart"])
         self.status_var.set("Connecting")
         self.detail_var.set("Menghubungkan ke TeleDrive...")
+        self.power_var.set(True)
+        self.update_status_view("syncing")
         self.worker = SyncWorker(config, self.events)
         self.worker.start()
 
@@ -620,7 +669,33 @@ class DesktopApp:
         if self.worker:
             self.worker.stop()
             self.worker = None
+        self.power_var.set(False)
         self.status_var.set("Disconnected")
+        self.detail_var.set("Sync berhenti. Klik ON atau Start untuk menjalankan kembali.")
+        self.update_status_view("stopped")
+
+    def power_on(self) -> None:
+        self.connect()
+
+    def power_off(self) -> None:
+        self.disconnect()
+        self.quit_app()
+
+    def update_autostart(self) -> None:
+        self.config = self.current_config()
+        save_config(self.config)
+        set_autostart(self.config["autostart"])
+
+    def update_status_view(self, status: str) -> None:
+        if status in ("online", "syncing"):
+            self.status_badge.config(text="ON", bg="#2EAD4F")
+            self.service_state.config(text="Running", fg="#2EAD4F")
+        elif status == "error":
+            self.status_badge.config(text="ERR", bg="#F0AD4E")
+            self.service_state.config(text="Error", fg="#F0AD4E")
+        else:
+            self.status_badge.config(text="OFF", bg="#C0392B")
+            self.service_state.config(text="Stopped", fg="#C0392B")
 
     def process_events(self) -> None:
         while True:
@@ -631,6 +706,8 @@ class DesktopApp:
             status = event["status"]
             self.status_var.set(status.capitalize())
             self.detail_var.set(event["message"])
+            self.device_var.set(self.config.get("device_name") or "-")
+            self.update_status_view(status)
         self.root.after(500, self.process_events)
 
     def open_folder(self) -> None:
@@ -664,7 +741,14 @@ class DesktopApp:
         else:
             self.root.iconify()
 
+    def handle_close(self) -> None:
+        if self.worker:
+            self.hide_window()
+        else:
+            self.quit_app()
+
     def quit_app(self) -> None:
+        self.is_quitting = True
         if self.worker:
             self.worker.stop()
             self.worker = None
